@@ -1,0 +1,18 @@
+Structure of the project:
+
+/MLBox				# one service for all company's ML tasks
+    /utils           		# libs with my utilities
+    /services		 	# Helper functions
+    	/peanuts             	# specific task
+            peanuts.py    	# main script the task "Peanuts"
+            train.py      	# scripts for training specific model for this task
+            datasetprocessing.py   # data set processing for specific model
+            researcing1.py      # testing ideas etc 1
+            researcing2.py      # testing ideas etc 2
+    /DataSets
+       	/Peanuts
+    /Models
+        /Sam2
+        /Yolo8_peanuts
+    main_ray_serve.py           # Entry point for running tasks (ray serve)
+
