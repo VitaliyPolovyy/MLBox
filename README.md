@@ -1,7 +1,10 @@
 --- DONE ---
 +ML ops: Ray Serve: EPR=>Ray=>ITE (prototype requests)
+
 +script utils: create "cvtools.py" 
+
 +script preprocessing: create script for converting raw images into clear dataset images  ("a4_image_processor.py" )
+
 +dataset: take photos of all batches of peanuts
 +dataset: rename the files according to the peanut batches
 +dataset: a4 preprocessing of raw images
