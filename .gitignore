@@ -1,2 +1,4 @@
 models/
 service/peanuts/run/
+assets/data/
+.env
