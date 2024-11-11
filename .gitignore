@@ -3,3 +3,4 @@ service/peanuts/run/
 assets/data/
 .env
 assets/test_files/*
+assets/configs/*
