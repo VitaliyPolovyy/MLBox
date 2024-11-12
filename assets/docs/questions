@@ -1,13 +1,13 @@
 QUESTIONS
 
-==== 1 ===== host & port
+===== 1 Ray serve accessible
+
 serve.start(http_options={"host": "0.0.0.0", "port": 8000})
-Is it the correct way to configure Ray Serve to listen on all network interfaces on port 8000?
+Is it the correct way to make Ray Serve accessible on all network interfaces on port 8000?
 
 
+ =====2 I donn't see outputs in the console:
 
-
-==== 2 ===== logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
