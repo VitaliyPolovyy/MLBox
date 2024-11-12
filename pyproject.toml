@@ -17,6 +17,8 @@ isort = "^5.13.2"
 dvc = {extras = ["gdrive"], version = "^3.56.0"}
 python-dotenv = "^1.0.1"
 huggingface-hub = "^0.26.2"
+ray = {extras = ["serve"], version = "^2.38.0"}
+python-multipart = "^0.0.17"
 
 
 [build-system]

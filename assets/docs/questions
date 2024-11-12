@@ -1,0 +1,21 @@
+QUESTIONS
+
+==== 1 ===== host & port
+serve.start(http_options={"host": "0.0.0.0", "port": 8000})
+Is it the correct way to configure Ray Serve to listen on all network interfaces on port 8000?
+
+
+
+
+==== 2 ===== logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+
+logging.debug("testtt: debug")
+logging.info("testtt: info")
+logging.error("testtt: error")
+
+I expect these messages in the console where I run ray serve. Why don't I see them?

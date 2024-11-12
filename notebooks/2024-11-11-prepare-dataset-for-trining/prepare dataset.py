@@ -1,30 +1,14 @@
 import json
 import logging
-import os
 import random
 import shutil
 from pathlib import Path
-
-import numpy as np
-import torch
-import yaml
-from ultralytics import YOLO
+import yaml 
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
-
-
-def get_device():
-    if torch.cuda.is_available():
-        device = 0
-        logging.info(f"Using GPU: {torch.cuda.get_device_name(0)}")
-    else:
-        device = "cpu"
-        logging.info("No GPU available, using CPU")
-    return device
-
 
 def convert_coco_to_yolo(annotation_path: Path, img_dir: Path, label_dir: Path):
     """Convert COCO format annotations to YOLO format"""
@@ -71,7 +55,6 @@ def convert_coco_to_yolo(annotation_path: Path, img_dir: Path, label_dir: Path):
                     # Write to file: class_id x1 y1 x2 y2 ...
                     f.write(f"0 {' '.join(map(str, normalized))}\n")
 
-
 def create_yaml_config(base_path: Path):
     """Create YAML configuration file for training"""
     config = {
@@ -90,9 +73,8 @@ def create_yaml_config(base_path: Path):
     logging.info("Created dataset.yaml configuration file")
     return yaml_path
 
-
 def process_dataset(base_path: Path):
-    test_dir = base_path / "test"
+    test_dir = base_path / "test1"
 
     # If test directory exists, skip processing
     if test_dir.exists():
@@ -105,6 +87,7 @@ def process_dataset(base_path: Path):
     for split in ["train", "val", "test"]:
         split_dir = base_path / split
         (split_dir / "images").mkdir(parents=True, exist_ok=True)
+        (split_dir / "labels").mkdir(parents=True, exist_ok=True)
 
     # Load COCO annotations
     with open(base_path / "annotation_coco.json", "r") as f:
@@ -116,8 +99,8 @@ def process_dataset(base_path: Path):
 
     # Split into train/val/test
     total = len(image_ids)
-    train_size = int(0.7 * total)
-    val_size = int(0.2 * total)
+    train_size = int(0.8 * total)
+    val_size = int(0.1 * total)
 
     splits = {
         "train": image_ids[:train_size],
@@ -129,12 +112,13 @@ def process_dataset(base_path: Path):
     for split_name, split_ids in splits.items():
         # Create new COCO structure
         split_data = {
-            "info": coco_data["info"],
-            "licenses": coco_data["licenses"],
+            "info": [],
+            "licenses": coco_data.get("licenses", []),
             "categories": coco_data["categories"],
             "images": [],
             "annotations": [],
         }
+
 
         # Filter images and annotations
         id_set = set(split_ids)
@@ -167,43 +151,7 @@ def process_dataset(base_path: Path):
     # Create YAML configuration file
     return create_yaml_config(base_path)
 
-
-def split_and_train(base_path: str, weights_path: str):
-    # Convert base_path to Path object
-    base_path = Path(base_path)
-
-    # Process dataset and get yaml path
-    yaml_path = process_dataset(base_path)
-
-    # Train YOLOv8 model
-    logging.info("Starting model training...")
-    model = YOLO(weights_path)
-
-    # Get available device
-    device = get_device()
-
-    model.train(
-        data=str(yaml_path),
-        epochs=2,
-        imgsz=1024,
-        batch=16,
-        device=device,
-        workers=8,
-        task="segment",
-    )
-    logging.info("Training completed successfully")
-
-
 if __name__ == "__main__":
-    base_path = r"C:\My storage\Python projects\DataSets\peanuts\task1"
-    weights_path = r"C:\My storage\Python projects\MLBox\models\Yolo\yolov8s-seg.pt"
-
-    def process_dataset(base_path: Path):
-        test_dir = base_path / "test"
-
-        # If test directory exists, skip processing
-        if test_dir.exists():
-            logging.info("Using existing dataset split")
-            return base_path / "dataset.yaml"
-
-    split_and_train(base_path, weights_path)
+    base_path = "/mnt/c/My storage/Python projects/DataSets/peanuts/task_1_3_4_7"
+    
+    process_dataset(Path(base_path))

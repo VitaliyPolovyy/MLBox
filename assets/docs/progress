@@ -1,4 +1,3 @@
-
 --- DONE ---
 - ML ops: Ray Serve: EPR=>Ray=>ITE (prototype requests)
 - script utils: create "cvtools.py"
@@ -14,8 +13,15 @@
 - dataset: agree on an annotation with Svitlana
 - vast.ai: train YOLOv8 on 50 pictures
 - Git: create repo and commit, share to Andrii
+- WSL
+- VS Code
+- PyEnv
+- Poetry
+
+
 
 --- IN PROGRESS ---
+- RAY: settings up
 - RAY: create actual function in Ray (using pretrained yolo)
 - ITE: save output image from Ray request into protocol in ERP
 
@@ -26,6 +32,14 @@
 - ML 2: train YOLO
 
 
+questions:
+-pyenv: How do I set a particular version of python globally or locally for a each project?
+-pyenv: 3.10.15 ?
+
+
+
 sudo apt-get update
 sudo apt-get install -y libgl1
 pip install ultralytics
+
+

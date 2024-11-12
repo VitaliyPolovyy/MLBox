@@ -4,3 +4,5 @@ assets/data/
 .env
 assets/test_files/*
 assets/configs/*
+*.png
+*.jpg
