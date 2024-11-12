@@ -19,3 +19,8 @@ logging.info("testtt: info")
 logging.error("testtt: error")
 
 I expect these messages in the console where I run ray serve. Why don't I see them?
+
+
+===== 3 What’s the best way to store different literal values, like the Hugging Face repository and file names?
+pyenv? my own ini/json file?
+Should this file to be tracked by git?

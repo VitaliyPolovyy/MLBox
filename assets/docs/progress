@@ -13,18 +13,19 @@
 - dataset: agree on an annotation with Svitlana
 - vast.ai: train YOLOv8 on 50 pictures
 - Git: create repo and commit, share to Andrii
-- WSL
+- ML ops:  WSL
 - VS Code
-- PyEnv
-- Poetry
-- RAY: settings up
+- ML: install PyEnv
+- ML: install poetry
+- RAY: settings up and test
 - dataset: join dataset (760 images)
 
 --- IN PROGRESS ---
 
 
 --- NEXT ---
-- vast.ai: train yolo
+- ML: train yolo on vast.ai
+- ML: huggingface_hub
 - RAY: send answer to ERP
 - RAY: create actual function in Ray (using pretrained yolo)
 - ITE: save output image from Ray request into protocol in ERP
