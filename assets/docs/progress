@@ -17,15 +17,17 @@
 - VS Code
 - PyEnv
 - Poetry
-
-
+- RAY: settings up
+- dataset: join dataset (760 images)
 
 --- IN PROGRESS ---
-- RAY: settings up
-- RAY: create actual function in Ray (using pretrained yolo)
-- ITE: save output image from Ray request into protocol in ERP
+
 
 --- NEXT ---
+- vast.ai: train yolo
+- RAY: send answer to ERP
+- RAY: create actual function in Ray (using pretrained yolo)
+- ITE: save output image from Ray request into protocol in ERP
 - dataset: upload to CVAT all remaining images (split into parts of 200 images)
 - dataset 2: cut out peanuts individually and save them as separate images (1200)
 - dataset 2: annotate 1200 images for classification
