@@ -3,12 +3,14 @@ import logging
 import random
 import shutil
 from pathlib import Path
-import yaml 
+
+import yaml
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
 
 def convert_coco_to_yolo(annotation_path: Path, img_dir: Path, label_dir: Path):
     """Convert COCO format annotations to YOLO format"""
@@ -55,6 +57,7 @@ def convert_coco_to_yolo(annotation_path: Path, img_dir: Path, label_dir: Path):
                     # Write to file: class_id x1 y1 x2 y2 ...
                     f.write(f"0 {' '.join(map(str, normalized))}\n")
 
+
 def create_yaml_config(base_path: Path):
     """Create YAML configuration file for training"""
     config = {
@@ -72,6 +75,7 @@ def create_yaml_config(base_path: Path):
 
     logging.info("Created dataset.yaml configuration file")
     return yaml_path
+
 
 def process_dataset(base_path: Path):
     test_dir = base_path / "test1"
@@ -119,7 +123,6 @@ def process_dataset(base_path: Path):
             "annotations": [],
         }
 
-
         # Filter images and annotations
         id_set = set(split_ids)
         split_data["images"] = [
@@ -151,7 +154,8 @@ def process_dataset(base_path: Path):
     # Create YAML configuration file
     return create_yaml_config(base_path)
 
+
 if __name__ == "__main__":
     base_path = "/mnt/c/My storage/Python projects/DataSets/peanuts/task_1_3_4_7"
-    
+
     process_dataset(Path(base_path))

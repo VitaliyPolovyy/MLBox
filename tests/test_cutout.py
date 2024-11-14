@@ -1,8 +1,8 @@
 import unittest
 
 import pytest
-from mlbox.utils import do_clip_image
 
+from mlbox.utils import do_clip_image
 
 # def test_clip_image():
 #     image = load..

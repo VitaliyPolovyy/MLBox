@@ -1,20 +1,18 @@
 import asyncio
 import base64
 import io
-import sys
+import logging
 import os
+import sys
+
 import ray
 from PIL import Image
 from ray import serve
-import logging
-
-
-
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 
 logging.debug("testtt: debug")
@@ -22,11 +20,9 @@ logging.info("testtt: info")
 logging.error("testtt: error")
 
 
-
 # Initialize Ray and Ray Serve with log_to_driver=True
 ray.init(log_to_driver=True)
 serve.start(http_options={"host": "0.0.0.0", "port": 8000})
-
 
 
 # Define the MLBox service with one replica
@@ -71,7 +67,6 @@ class MLBox:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    
     async def send_result_to_erp(self, image_data: bytes, json_data: dict):
         """Send the image and processing results to the ERP system."""
         try:
@@ -99,7 +94,6 @@ class MLBox:
         except Exception as e:
             print(f"Error sending result to ERP: {str(e)}")
 
-
     async def __call__(self, request):
         try:
             # Extract the image data and service code from the request
@@ -112,7 +106,7 @@ class MLBox:
             if service_code == "1":
                 # Process the image immediately in the background
                 asyncio.create_task(self.process_image_1(image_data))
-             
+
                 return {
                     "status": "success",
                     "message": "Image processing started in the background 2",

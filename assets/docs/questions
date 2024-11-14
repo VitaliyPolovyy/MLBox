@@ -1,26 +1,64 @@
-QUESTIONS
+=====  What’s the best way to store different literal values, like the Hugging Face token, repository and file names?
 
-===== 1 Ray serve accessible
-
-serve.start(http_options={"host": "0.0.0.0", "port": 8000})
-Is it the correct way to make Ray Serve accessible on all network interfaces on port 8000?
-
-
- =====2 I donn't see outputs in the console:
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
-
-logging.debug("testtt: debug")
-logging.info("testtt: info")
-logging.error("testtt: error")
-
-I expect these messages in the console where I run ray serve. Why don't I see them?
+Now, I created ".env" file with 
+# Hugging Face API data
+HF_TOKEN=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
+HF_REPO_ID=PolovyyVitaliy/peanuts-seg-yolo8s
+HF_MODEL_FILE=yolov8m-seg_v1.pt
 
 
-===== 3 What’s the best way to store different literal values, like the Hugging Face repository and file names?
-pyenv? my own ini/json file?
-Should this file to be tracked by git?
+===== Hugginface: what scenario? 
+-Store multiple model files in a single Hugging Face repository.
+-Use a clear naming convention for each model file (e.g., yolo8s_seg_peanuts_v1.pt).
+-Document each version in the README.md (model card) to provide details on training configurations, datasets, and hyperparameters.
+
+Is it better to store one file but different versions of it?
+
+
+
+===== Poetry env loction
+root@COMB-CO-157:/mnt/c/My storage/Python projects/MLBox# poetry env info --path
+/root/.cache/pypoetry/virtualenvs/mlbox-uNx4hJXb-py3.10
+Should I remove env folders to project folder?
+The issue is that I have to manually run the 'poetry shell' command each time I open the project.
+How to fix it?
+
+===== Huggingface certificate problem
+My computer doesn\t trust huggingface.co (when "model_path = hf_hub_download(repo_id=hf_repo_id, filename=hf_model_file, token=hf_token)")
+How is it best?
+1. just globally install certificate
+2. keep certificate in asset/confic as part of the project
+3. Verify = False
+4. ???
+
+===== Location of model weight file which downloaded from Huggingface
+1. default system location?
+2. the project folder for better management?
+
+===== What is the concept of using pathlib to manage paths?
+My version:
+
+MLBox\mlbox\settings.py:
+from pathlib import Path
+ROOT_DIR = Path(__file__).parent.parent
+
+using:
+from mlbox.settings import ROOT_DIR
+
+    model_path = ROOT_DIR / "models" / "Yolo" / "yolov8m-seg_v1.pt"
+    image_folder = ROOT_DIR / "Assets" / "test_peanuts_images"
+    result_folder = image_folder / "result"
+
+===== MLBox\assets\configs\ray_serv_config.yaml
+Is file location right?
+
+===== MLBoxWhat's scenario training of model with vast.ai
+Now, I manually create folders, copy dataset, training script, install libs etc
+It seems silly
+
+===== "scripts\main_ray_serve_.py"
+Is it right?
+I mean script Location and code
+
+
+===== Some quastoins about project structure

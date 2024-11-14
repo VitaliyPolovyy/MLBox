@@ -19,13 +19,19 @@
 - ML: install poetry
 - RAY: settings up and test
 - dataset: join dataset (760 images)
+- train yolo on vast.ai (1024)
 
 --- IN PROGRESS ---
-
+- test trained yolo (1024)
+- train yolo on vast.ai (640) and compare with (1024)
+- Integrate huggingface_hub
 
 --- NEXT ---
-- ML: train yolo on vast.ai
-- ML: huggingface_hub
+- what is  dotenv?
+- use Serve config
+- Integrate huggingface_hub
+- Integrate dataset control version
+- format code with isort and black
 - RAY: send answer to ERP
 - RAY: create actual function in Ray (using pretrained yolo)
 - ITE: save output image from Ray request into protocol in ERP
@@ -33,11 +39,6 @@
 - dataset 2: cut out peanuts individually and save them as separate images (1200)
 - dataset 2: annotate 1200 images for classification
 - ML 2: train YOLO
-
-
-questions:
--pyenv: How do I set a particular version of python globally or locally for a each project?
--pyenv: 3.10.15 ?
 
 
 
