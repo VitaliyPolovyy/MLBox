@@ -1,9 +1,10 @@
+================================================================
 Hi I am developer of ML project.
 I am beginner in ML. I will provide u with my Project and then ask some questions.
 After you read overview, you just should ask me what I want to ask.
 Don't summarize etc, just ask me.
 Your answern should be concise and briefe.
-You should ask me questions one by one if you want to clarify questoins.
+You should ask me questions one by one if you want to clarify questions.
 
 """
 Project Overview
@@ -46,3 +47,4 @@ Development and Scaling Plans
 
 Although MLBox currently runs locally with WSL, future deployments might explore cloud solutions or Docker to scale as new services are added. Integrations with Hugging Face Hub for automatic model weight updates are planned, pending resolution of certificate issues.
 """
+================================================================

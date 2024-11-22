@@ -10,22 +10,17 @@ import numpy as np
 from huggingface_hub import hf_hub_download
 from PIL import Image, ImageDraw, ImageFilter
 from ultralytics import YOLO  # Import YOLO for model loading and prediction
-
 from mlbox.settings import ROOT_DIR
+
+
+CURRENT_DIR = Path(__file__).parent
 
 # Configure SSL at the start to avoid SSL certificate verification issues
 ssl._create_default_https_context = ssl._create_unverified_context
 os.environ["CURL_CA_BUNDLE"] = ""
 
 
-def process_image(model, image_path, result_folder, alpha):
-    """Process a single image and save the result.
-    Args:
-        model: The YOLO model to use for prediction.
-        image_path: Path to the input image.
-        result_folder: Folder to save the result images.
-        alpha: Transparency level for blending the overlay with the original image.
-    """
+def process_image(model, image_path, result_folder, alpha, confidence_threshold=0.5):
     # Load the image using Pillow and convert to RGB format
     image = Image.open(image_path).convert("RGB")
     image_width, image_height = image.size
@@ -42,8 +37,8 @@ def process_image(model, image_path, result_folder, alpha):
     top_left_y = (1024 - new_height) // 2
     padded_image.paste(resized_image, (top_left_x, top_left_y))
 
-    # Convert the image to a NumPy array and use the model to make predictions
-    results = model.predict(np.array(padded_image), verbose=False)
+    # Convert the image to a NumPy array and use the model to make predictions with the confidence threshold
+    results = model.predict(np.array(padded_image), conf=confidence_threshold, verbose=False)
 
     # Only process if we have valid results and masks are found
     if results and len(results) > 0 and results[0].masks is not None:
@@ -51,8 +46,8 @@ def process_image(model, image_path, result_folder, alpha):
         overlay = padded_image.copy()
         draw = ImageDraw.Draw(overlay)
 
-        # Iterate over each mask in the results and draw it on the overlay
-        for i, mask in enumerate(results[0].masks.data):
+        # Iterate over each mask and its corresponding confidence score
+        for i, (mask, score) in enumerate(zip(results[0].masks.data, results[0].boxes.conf)):
             # Resize the mask back to the size of the padded image (1024x1024)
             mask_resized = cv2.resize(
                 mask.cpu().numpy(), (1024, 1024), interpolation=cv2.INTER_NEAREST
@@ -63,15 +58,10 @@ def process_image(model, image_path, result_folder, alpha):
             mask_indices = np.where(mask_resized == 1)
             for y, x in zip(mask_indices[0], mask_indices[1]):
                 draw.point((x, y), fill=color)
-        """
-        # Draw bounding boxes around detected objects
-        for box in results[0].boxes.data:
-            # Extract coordinates of the bounding box
-            x1, y1, x2, y2 = map(int, box[:4])
-            # Draw a rectangle on the overlay with green color
-            draw.rectangle([x1, y1, x2, y2], outline=(0, 255, 0), width=2)
 
-        """
+            # Display the confidence score next to the mask
+            score_text = f"{score:.2f}"
+            draw.text((mask_indices[1][0], mask_indices[0][0]), score_text, fill="white")
 
         # Blend the overlay with the padded image to add transparency to the masks
         result_image = Image.blend(padded_image, overlay, alpha)
@@ -85,6 +75,7 @@ def process_image(model, image_path, result_folder, alpha):
         print(f"No masks found for image: {image_path}")
 
 
+
 if __name__ == "__main__":
     # Load environment variables from a .env file
     dotenv.load_dotenv()
@@ -96,10 +87,12 @@ if __name__ == "__main__":
     if not all([hf_token, hf_repo_id, hf_model_file]):
         raise ValueError("Missing required environment variables (huggingface hub)")
 
-    # Define paths for the model, input images, and results
-    model_path = ROOT_DIR / "models" / "Yolo" / "yolov8m-seg_v1.pt"
-    image_folder = ROOT_DIR / "Assets" / "test_peanuts_images"
-    result_folder = image_folder / "result"
+    model_path = hf_hub_download(repo_id=hf_repo_id, filename=hf_model_file, token=hf_token)
+    
+    # model_path = ROOT_DIR / "models" / "Yolo" / "yolov8m-seg_v1.pt"
+    image_folder = ROOT_DIR / "tmp" / CURRENT_DIR.name / "input"
+    result_folder = ROOT_DIR / "tmp" / CURRENT_DIR.name / "output"
+    
     alpha = 0.5  # Transparency level of the mask overlay
 
     # Initialize YOLO model with the specified model path

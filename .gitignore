@@ -1,8 +1,8 @@
 models/
 service/peanuts/run/
-assets/data/
+assets/configs/
+assets/DataSet/
+tmp/
 .env
-assets/test_files/*
-assets/configs/*
 *.png
 *.jpg
