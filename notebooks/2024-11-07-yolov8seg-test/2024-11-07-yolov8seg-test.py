@@ -38,7 +38,9 @@ def process_image(model, image_path, result_folder, alpha, confidence_threshold=
     padded_image.paste(resized_image, (top_left_x, top_left_y))
 
     # Convert the image to a NumPy array and use the model to make predictions with the confidence threshold
-    results = model.predict(np.array(padded_image), conf=confidence_threshold, verbose=False)
+    results = model.predict(
+        np.array(padded_image), conf=confidence_threshold, verbose=False
+    )
 
     # Only process if we have valid results and masks are found
     if results and len(results) > 0 and results[0].masks is not None:
@@ -47,7 +49,9 @@ def process_image(model, image_path, result_folder, alpha, confidence_threshold=
         draw = ImageDraw.Draw(overlay)
 
         # Iterate over each mask and its corresponding confidence score
-        for i, (mask, score) in enumerate(zip(results[0].masks.data, results[0].boxes.conf)):
+        for i, (mask, score) in enumerate(
+            zip(results[0].masks.data, results[0].boxes.conf)
+        ):
             # Resize the mask back to the size of the padded image (1024x1024)
             mask_resized = cv2.resize(
                 mask.cpu().numpy(), (1024, 1024), interpolation=cv2.INTER_NEAREST
@@ -61,7 +65,9 @@ def process_image(model, image_path, result_folder, alpha, confidence_threshold=
 
             # Display the confidence score next to the mask
             score_text = f"{score:.2f}"
-            draw.text((mask_indices[1][0], mask_indices[0][0]), score_text, fill="white")
+            draw.text(
+                (mask_indices[1][0], mask_indices[0][0]), score_text, fill="white"
+            )
 
         # Blend the overlay with the padded image to add transparency to the masks
         result_image = Image.blend(padded_image, overlay, alpha)
@@ -75,7 +81,6 @@ def process_image(model, image_path, result_folder, alpha, confidence_threshold=
         print(f"No masks found for image: {image_path}")
 
 
-
 if __name__ == "__main__":
     # Load environment variables from a .env file
     dotenv.load_dotenv()
@@ -87,12 +92,14 @@ if __name__ == "__main__":
     if not all([hf_token, hf_repo_id, hf_model_file]):
         raise ValueError("Missing required environment variables (huggingface hub)")
 
-    model_path = hf_hub_download(repo_id=hf_repo_id, filename=hf_model_file, token=hf_token)
-    
+    model_path = hf_hub_download(
+        repo_id=hf_repo_id, filename=hf_model_file, token=hf_token
+    )
+
     # model_path = ROOT_DIR / "models" / "Yolo" / "yolov8m-seg_v1.pt"
     image_folder = ROOT_DIR / "tmp" / CURRENT_DIR.name / "input"
     result_folder = ROOT_DIR / "tmp" / CURRENT_DIR.name / "output"
-    
+
     alpha = 0.5  # Transparency level of the mask overlay
 
     # Initialize YOLO model with the specified model path

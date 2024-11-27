@@ -1,4 +1,4 @@
---- DONE ---
+git --- DONE ---
 - ML ops: Ray Serve: EPR=>Ray=>ITE (prototype requests)
 - script utils: create "cvtools.py"
 - script preprocessing: create script for converting raw images into clear dataset images ("a4_image_processor.py")
@@ -25,16 +25,16 @@
 - format code with isort and black
 - create peanut.py with basic workflow
 - DATASET for  class : cut out peanuts individually and save them as separate images
+- run serve ray using  use Serve config
+- send image to ray serve from ERP
 
 --- IN PROGRESS ---
-
+- DATASET for  class: prepare dataset for training
+- train class
 
 
 --- NEXT ---
-- run serve ray using  use Serve config
-- send image to ray serve from ERP
-- DATASET for  class: prepare dataset for training
-- train class
+
 
 
 

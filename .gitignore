@@ -6,3 +6,4 @@ tmp/
 .env
 *.png
 *.jpg
+*.pt

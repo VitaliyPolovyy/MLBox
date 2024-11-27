@@ -1,1 +1,11 @@
 curl -X POST "https://ite.roshen.com:4433/WS/api/_MLBOX_HANDLE_RESPONSE?call_in_async_mode=false" -H "accept: application/xml" -H "Content-Type: application/json" -d "{ \"result_json\": {}, \"result_service_json\": {} }"
+
+
+
+curl -X POST -F "image=@\"C:\My storage\Python projects\MLBox\tmp\peanuts\input\D21010101000001__14972__V223-011__0026.jpg\"" -F "service_code=1" http://172.20.85.74:8000/mlbox
+
+curl -X POST -F "image=@C:\My storage\Python projects\MLBox\assets\DataSet\peanuts\task6\D21010101000026__12835__C9601123601__0032.jpg" -F "service_code=1" http://172.20.85.74:8000/mlbox
+
+
+curl -X POST -F "image=@C:/My storage/Python projects/MLBox/assets/DataSet/peanuts/task6/D21010101000026__12835__C9601123601__0032.jpg" -F "service_code=1" -F "alias=your_alias" -F "alias_key=your_alias_key" http://172.20.85.74:8000/process_image
+

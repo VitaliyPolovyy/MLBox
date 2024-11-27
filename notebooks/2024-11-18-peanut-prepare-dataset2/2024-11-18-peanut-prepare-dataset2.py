@@ -17,7 +17,7 @@ os.environ["CURL_CA_BUNDLE"] = ""
 if __name__ == "__main__":
     # Load environment variables from a .env file
     dotenv.load_dotenv()
-    
+
     HF_TOKEN = os.getenv("HF_TOKEN")
     HF_REPO_ID = os.getenv("PEANUT_HF_REPO_ID")
     HF_MODEL_FILE = os.getenv("PEANUT_HF_MODEL_FILE")
@@ -27,12 +27,14 @@ if __name__ == "__main__":
     if not all([HF_TOKEN, HF_REPO_ID, HF_MODEL_FILE]):
         raise ValueError("Missing required environment variables (huggingface hub)")
 
-    model_path = hf_hub_download(repo_id=HF_REPO_ID, filename=HF_MODEL_FILE, token=HF_TOKEN)
-    
+    model_path = hf_hub_download(
+        repo_id=HF_REPO_ID, filename=HF_MODEL_FILE, token=HF_TOKEN
+    )
+
     # model_path = ROOT_DIR / "models" / "Yolo" / "yolov8m-seg_v1.pt"
     image_folder = ROOT_DIR / "tmp" / CURRENT_DIR.name / "input"
     result_folder = ROOT_DIR / "tmp" / CURRENT_DIR.name / "output"
-    
+
     confidence_threshold = 0.5  # Confidence threshold for predictions
 
     # Initialize YOLO model with the specified model path
@@ -65,7 +67,9 @@ if __name__ == "__main__":
         padded_image.paste(resized_image, (top_left_x, top_left_y))
 
         # Convert the image to a NumPy array and use the model to make predictions with the confidence threshold
-        results = model.predict(np.array(padded_image), conf=confidence_threshold, verbose=False)
+        results = model.predict(
+            np.array(padded_image), conf=confidence_threshold, verbose=False
+        )
 
         # Only process if we have valid results and masks are found
         if results and len(results) > 0 and results[0].masks is not None:
