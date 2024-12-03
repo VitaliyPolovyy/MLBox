@@ -35,12 +35,13 @@ image_folder = ROOT_DIR / "tmp" / CURRENT_DIR.name / "input"
 result_folder = ROOT_DIR / "tmp" / CURRENT_DIR.name / "output"
 
 
-def process_image(input_image_file, alias, alias_key):
+def process_image(input_image_file, alias, alias_key) -> str:
     input_image = PILImage.open(input_image_file).convert("RGB")
 
     # Step 1: detect a4 and crop it
     preprocessed_image, pixels_per_mm = preprocessing_image_for_detection(input_image)
 
+    # TODO: add flag to enable / disable saving preprocessed image
     preprocessed_image.save(
         result_folder
         / f"{input_image_file.stem}_preprocessed_image{input_image_file.suffix}"
