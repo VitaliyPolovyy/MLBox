@@ -3,6 +3,7 @@ service/peanuts/run/
 assets/configs/
 assets/DataSet/
 tmp/
+script/train/*/train*/
 .env
 *.png
 *.jpg

@@ -10,8 +10,8 @@ import numpy as np
 from huggingface_hub import hf_hub_download
 from PIL import Image, ImageDraw, ImageFilter
 from ultralytics import YOLO  # Import YOLO for model loading and prediction
-from mlbox.settings import ROOT_DIR
 
+from mlbox.settings import ROOT_DIR
 
 CURRENT_DIR = Path(__file__).parent
 

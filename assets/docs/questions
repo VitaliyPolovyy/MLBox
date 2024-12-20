@@ -1,4 +1,15 @@
-===== MLBoxWhat's scenario training of model with vast.ai
+===== what type should I use to represent Image?
+Imagine that my computer vision solution has many services and procedures that use images as arguments and results. 
+What type should I use for them?
+np.ndarray?
+PIL.Image?
+both?
+
+
+MLBox\scripts\train\2024-11-26-yolov8s-cls
+
+
+===== MLBox What's scenario training of model with vast.ai
 Now, I manually create folders, copy dataset, training script, install libs etc
 It seems silly
 
@@ -14,12 +25,12 @@ Is it right place to keep ROOT_DIR?
 
 ===== where should I keep constants which are related to specific service?
 .env in ROOT_DIR ?
-.env in service folder?
+.env in service folder (MLBox/Services)?
 .config.py in service folder?
 .config.py + .env in service folder ?
 
 PEANUT_HF_REPO_ID=PolovyyVitaliy/peanuts-seg-yolo8s
-PEANUT_HF_MODEL_FILE=peanuts-seg-yolo8s.pt
+=PEANUT_HF_MODEL_FILE=peanuts-seg-yolo8s.pt
 PEANUT_IMAGE_SIZE=1024
 PEANUT_CROPPED_IMAGE_SIZE=100
 
@@ -30,4 +41,4 @@ try - except?
 
 ===== image size for training, and for prediction, preprocessing
 
-===== Batch processing, concurrency
+===== Ray Batch processing, concurrency

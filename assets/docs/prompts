@@ -38,7 +38,7 @@ MLBox
 └── tests        # Unit tests
 
 Key Assumptions and Structure
-
+  
 - Service-Specific Models: Each service within MLBox is expected to have its own model, tailored to its unique purpose.
 - Shared Utilities: Common utility functions are organized centrally to support multiple services.
 - Configurations: Certain configuration files (e.g., Ray Serve setup) apply to the entire MLBox project, while others are tailored to individual services.
