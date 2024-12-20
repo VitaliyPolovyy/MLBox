@@ -14,15 +14,22 @@ Public API Functions:
 import json
 import math
 import os
-from typing import Dict, List, Tuple, Union
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
+import pycocotools.mask as coco_mask
+
+from mlbox.settings import DEBUG_MODE, ROOT_DIR
 
 # Type aliases
 Point = Tuple[int, int]
 Rectangle = np.ndarray
 Contour = np.ndarray
+CURRENT_DIR = Path(__file__).parent
+
+result_folder = ROOT_DIR / "tmp" / CURRENT_DIR.name / "output"
 
 
 def vector_angle(pt1: Point, pt2: Point, pt0: Point) -> float:
@@ -84,8 +91,6 @@ def masks_to_coco_annotations(
             segmentation = polygons
         elif segmentation_type == "raster":
             try:
-                import pycocotools.mask as coco_mask
-
                 rle = coco_mask.encode(np.asfortranarray(mask.astype(np.uint8)))
                 rle["counts"] = rle["counts"].decode("utf-8")
                 segmentation = rle
@@ -171,11 +176,13 @@ if __name__ == "__main__":
 
 def detect_white_rectangles(
     image: np.ndarray,
-    aspect_ratio: float = 297 / 210,
-    angle_tolerance: float = 5,
-    aspect_ratio_tolerance: float = 0.05,
-    sheet_width: float = 297,
-    sheet_height: float = 210,
+    aspect_ratio: Optional[float] = 297 / 210,
+    angle_tolerance: Optional[float] = 5,
+    aspect_ratio_tolerance: Optional[float] = 0.05,
+    sheet_width: Optional[float] = 297,
+    sheet_height: Optional[float] = 210,
+    debug_mode: Optional[bool] = False,
+    output_dir: Optional[Path] = None,
 ) -> List[Dict]:
     """
     Detect white rectangles in image. If aspect_ratio provided, filter and sort by ratio match.
@@ -186,7 +193,7 @@ def detect_white_rectangles(
         angle_tolerance: Maximum angle deviation from 90°
         aspect_ratio_tolerance: Maximum aspect ratio deviation
         sheet_width: Width of the reference sheet in mm (optional)
-        sheet_height: Height of the reference sheet in mm (optional)
+        sheet_height:   Height of the reference sheet in mm (optional)
 
     Returns:
         List of rectangles sorted by total score in descending order
@@ -228,8 +235,7 @@ def detect_white_rectangles(
         rectangles = []
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         ret, _ = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        image_area = image.shape[0] * image.shape[1]
-        min_area = image_area / 9
+        min_area = image.shape[0] * image.shape[1] / 9
 
         # Find all rectangles
         for threshold in range(int(ret), 256, 10):
@@ -237,12 +243,29 @@ def detect_white_rectangles(
             contours, _ = cv2.findContours(
                 thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
             )
+            contours = [
+                contour for contour in contours if cv2.contourArea(contour) > min_area
+            ]
 
-            for cnt in contours:
-                if cv2.contourArea(cnt) < min_area:
-                    continue
+            if debug_mode:
+                save_image(
+                    image=thresh,
+                    contours=contours,
+                    file_name=output_dir / f"thresh_{threshold}.jpg",
+                )
+
+            for i, cnt in enumerate(contours):
 
                 approx = cv2.approxPolyDP(cnt, cv2.arcLength(cnt, True) * 0.02, True)
+
+                if debug_mode:
+                    save_image(
+                        image=thresh,
+                        contours=[cnt],
+                        approx=approx,
+                        file_name=output_dir / f"thresh_approx_{i}_{threshold}.jpg",
+                    )
+
                 if len(approx) == 4:
                     # Check angles
                     max_angle_deviation = 0
@@ -257,7 +280,7 @@ def detect_white_rectangles(
                         )
                         max_angle_deviation = max(max_angle_deviation, angle_deviation)
 
-                    # Get dimensions
+                    # Get width and height of rectangle
                     d1 = euclidean_distance(approx[0][0], approx[1][0])
                     d2 = euclidean_distance(approx[1][0], approx[2][0])
                     d3 = euclidean_distance(approx[2][0], approx[3][0])
@@ -329,6 +352,14 @@ def detect_white_rectangles(
                             approx, [r["rectangle"] for r in rectangles]
                         )
                     ):
+                        if debug_mode:
+                            save_image(
+                                image=thresh,
+                                contours=[cnt],
+                                approx=approx,
+                                file_name=output_dir
+                                / f"thresh_result_{i}_{threshold}.jpg",
+                            )
                         rectangles.append(rect_data)
 
         # Sort rectangles by total score in descending order
@@ -336,4 +367,113 @@ def detect_white_rectangles(
         return rectangles
 
     except Exception as e:
-        return []
+        raise
+
+
+def save_image(
+    image: np.ndarray,
+    file_name: Path,
+    contours: Optional[List[Contour]] = None,
+    approx: Optional[Contour] = None,
+):
+
+    if len(image.shape) == 2:
+        image_copy = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    else:
+        image_copy = image.copy()
+
+    if contours is not None and len(contours) > 0:
+        cv2.drawContours(image_copy, contours, -1, (0, 255, 100), 5)
+    if approx is not None:
+        cv2.drawContours(image_copy, [approx], -1, (0, 100, 255), 3)
+
+    cv2.imwrite(str(file_name), image_copy)
+
+
+def preprocess_images_with_white_rectangle(
+    input_images: List[np.ndarray],
+    a4_ratio: float = 297 / 210,
+    target_width: Optional[int] = None,
+    padding_percent: float = 0.01,
+) -> List[Tuple[np.ndarray, float]]:
+    """
+    Preprocess a batch of images containing white rectangles (e.g., A4 paper) for further analysis.
+
+    This function:
+    - detects a white rectangle in each image
+    - rotates it so that the wider side is horizontal
+    - the rectangle with optional padding
+    - resizes it to the specified width while maintaining  aspect ratio.
+
+    Parameters:
+        input_images (List[PILImage]): A list of input images to preprocess.
+        a4_ratio (float): The aspect ratio of the white rectangle to detect. Default is A4 paper ratio (297/210).
+        target_width (Optional[int]): The desired width of the output images. If None, no resizing is performed.
+        padding_percent (float): The percentage of padding to add around the detected rectangle. Default is 0.01 (1%).
+
+    Returns:
+        Tuple[List[np.ndarray], List[float]]:
+            - A list of preprocessed images as NumPy arrays.
+            - A list of pixel-to-mm conversion factors for each image.
+    """
+
+    def rotate_image(
+        image: np.ndarray, rect_points: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        d1 = np.linalg.norm(rect_points[0] - rect_points[1])
+        d2 = np.linalg.norm(rect_points[1] - rect_points[2])
+        pts = (
+            (rect_points[0], rect_points[1])
+            if d1 > d2
+            else (rect_points[1], rect_points[2])
+        )
+        dx = pts[1][0] - pts[0][0]
+        dy = pts[1][1] - pts[0][1]
+        angle = 180 - np.degrees(np.arctan2(dy, dx))
+
+        height, width = image.shape[:2]
+        center = (width // 2, height // 2)
+        M = cv2.getRotationMatrix2D(center, -angle, 1.0)
+        rotated = cv2.warpAffine(image, M, (width, height))
+        rect_points_rotated = cv2.transform(np.array([rect_points]), M)[0]
+        return rotated, rect_points_rotated
+
+    def crop_and_resize(image: np.ndarray, rect_points: np.ndarray) -> np.ndarray:
+        min_x = np.min(rect_points[:, 0])
+        max_x = np.max(rect_points[:, 0])
+        min_y = np.min(rect_points[:, 1])
+        max_y = np.max(rect_points[:, 1])
+        padding_x = int(padding_percent * (max_x - min_x))
+        padding_y = int(padding_percent * (max_y - min_y))
+        x1 = max(0, int(min_x) - padding_x)
+        x2 = min(image.shape[1], int(max_x) + padding_x)
+        y1 = max(0, int(min_y) - padding_y)
+        y2 = min(image.shape[0], int(max_y) + padding_y)
+        cropped = image[y1:y2, x1:x2]
+
+        if target_width is not None:
+            aspect_ratio = cropped.shape[1] / cropped.shape[0]
+            new_height = int(target_width / aspect_ratio)
+            return cv2.resize(cropped, (target_width, new_height))
+        return cropped
+
+    processed_data = []
+
+    for np_image in input_images:
+        # Detect A4 paper
+        rectangles = detect_white_rectangles(np_image, aspect_ratio=a4_ratio)
+        if not rectangles:
+            raise ValueError(f"No A4 paper detected. Image size: {np_image.shape}")
+        rect_points = np.array([point[0] for point in rectangles[0]["rectangle"]])
+        pixels_per_mm = rectangles[0]["pixels_per_mm"]
+
+        # Rotate image
+        rotated_image, rotated_rect_points = rotate_image(np_image, rect_points)
+
+        # Crop and resize
+        processed_image = crop_and_resize(rotated_image, rotated_rect_points)
+
+        # Pair processed image with pixels_per_mm
+        processed_data.append((processed_image, pixels_per_mm))
+
+    return processed_data

@@ -16,15 +16,16 @@ CURRENT_DIR = Path(__file__).parent
 
 if __name__ == "__main__":
 
-    model = YOLO( ROOT_DIR / "assets" / "models" / "Yolo" / "yolov8s-cls.pt")
-
+    model = YOLO(ROOT_DIR / "assets" / "models" / "Yolo" / "yolov8s-cls.pt")
 
     input_folder = ROOT_DIR / "assets" / "DataSet" / "peanuts_class"
     yaml_file = input_folder / "dataset.yaml"
-    #yaml_file = Path (r"/mnt/c/My storage/Python projects/MLBox/assets/DataSet/peanuts_class/dataset.yaml").resolve()
-    yaml_file = Path (r"dataset.yaml").resolve()
+    # yaml_file = Path (r"/mnt/c/My storage/Python projects/MLBox/assets/DataSet/peanuts_class/dataset.yaml").resolve()
+    yaml_file = Path(r"dataset.yaml").resolve()
 
-    print(str (yaml_file.resolve()),)
+    print(
+        str(yaml_file.resolve()),
+    )
 
     """
     model.train(
@@ -38,8 +39,5 @@ if __name__ == "__main__":
     )
     """
 
-    
-
-    
     # Train the model
-    #results = model.train(data="mnist160", epochs=100, imgsz=64)
+    # results = model.train(data="mnist160", epochs=100, imgsz=64)

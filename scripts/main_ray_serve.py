@@ -1,10 +1,13 @@
-from ray import serve
+from pathlib import Path
+
 import ray
+from ray import serve
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+
 from mlbox.services.peanuts import peanuts
 from mlbox.settings import ROOT_DIR
-from pathlib import Path
+
 
 @serve.deployment(route_prefix="/peanuts")
 class Peanuts:
@@ -21,9 +24,11 @@ class Peanuts:
         if path.endswith("/process_image"):
             return await self.process_image(request)
         else:
-            return JSONResponse({"status": "error", "message": "Invalid endpoint"}, status_code=404)
+            return JSONResponse(
+                {"status": "error", "message": "Invalid endpoint"}, status_code=404
+            )
 
-    @serve.batch(max_batch_size=10, batch_wait_timeout_s = 0)
+    @serve.batch(max_batch_size=10, batch_wait_timeout_s=0)
     async def process_image(self, batched_requests):
         results = []
         for request in batched_requests:
@@ -42,14 +47,31 @@ class Peanuts:
                     f.write(image_data)
 
                 # Processing logic
-                result = peanuts.process_image(save_path, alias=alias, alias_key=alias_key)
+                result = peanuts.process_image(
+                    save_path, alias=alias, alias_key=alias_key
+                )
 
-                #results.append({"filename": filename, "result": result, "alias": alias, "alias_key": alias_key})
-                results.append({"filename": filename, "result": {"error": '34'}, "alias": alias, "alias_key": alias_key})
+                # results.append({"filename": filename, "result": result, "alias": alias, "alias_key": alias_key})
+                results.append(
+                    {
+                        "filename": filename,
+                        "result": {"error": "34"},
+                        "alias": alias,
+                        "alias_key": alias_key,
+                    }
+                )
             except Exception as e:
-                results.append({"filename": filename, "result": {"error": str(e)}, "alias": alias, "alias_key": alias_key})
+                results.append(
+                    {
+                        "filename": filename,
+                        "result": {"error": str(e)},
+                        "alias": alias,
+                        "alias_key": alias_key,
+                    }
+                )
 
         return results
+
 
 # Expose the deployment instance (bind it)
 PeanutsDeployment = Peanuts.bind()

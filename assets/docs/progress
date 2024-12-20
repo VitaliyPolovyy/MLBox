@@ -29,18 +29,28 @@ git --- DONE ---
 - send image to ray serve from ERP
 
 --- IN PROGRESS ---
+- retrain yolov8seg to show Andrew
+- detect_white_rec - is broken
 - DATASET for  class: prepare dataset for training
-- train class
+
 
 
 --- NEXT ---
 
+- prepare dataset2 for training (yolov8cls)  
+- train yolov8cls
+- ERP -> RAY -> ERP
+
+- bad result
+--- bad masks
+--- bad rotated bounding boxes
+--- bad fit elipse 
+
+- Integrate dataset control version for dataset
 
 
 
 - train yolo on vast.ai (640) and compare with (1024)
-- Integrate dataset control version
-
 
 sudo apt-get update
 sudo apt-get install -y libgl1
