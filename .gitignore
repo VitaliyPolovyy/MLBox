@@ -4,6 +4,7 @@ assets/configs/
 assets/DataSet/
 tmp/
 script/train/*/train*/
+.pylintrc
 .env
 *.png
 *.jpg

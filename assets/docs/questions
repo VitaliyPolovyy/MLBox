@@ -1,9 +1,26 @@
-===== what type should I use to represent Image?
-Imagine that my computer vision solution has many services and procedures that use images as arguments and results. 
-What type should I use for them?
-np.ndarray?
-PIL.Image?
-both?
+1. how to run solution as prod (docker?)
+2. чи норм юзати http request для взаємодії з ML сервісом? Що дорослі пацани юзають?
+3. review code:
+-mlbox\services\peanuts\peanuts.py
+-mlbox\services\peanuts\datatype.py
+-mlbox\services\peanuts\datatype.py
+-deployments\peanut_deployment.py
+-deployments\ray_serv.yaml
+
+
+4. Паттерни поведінки
+5. Інші моделі для instance segmentation
+
+дрібнички:
+=== is pylint ok?
+"Missing class docstring"?
+
+=== loguru and serve
+зараз таку помилку видає _pickle.PicklingError: Cannot pickle files that are not opened for reading 
+
+=== remote() зламався
+
+
 
 
 MLBox\scripts\train\2024-11-26-yolov8s-cls
@@ -13,30 +30,6 @@ MLBox\scripts\train\2024-11-26-yolov8s-cls
 Now, I manually create folders, copy dataset, training script, install libs etc
 It seems silly
 
-===== RAY SERVE
-- "MLBox\assets\configs\ray_serv_config.yaml": is location right?
-- "scripts\main_ray_serve_.py": is location right?
-- "main_ray_serve_.py": let's review code
-
-
-===== ROOT DIR: "MLBox\mlbox\settings.py"
-Is it right place to keep ROOT_DIR?
-
-
-===== where should I keep constants which are related to specific service?
-.env in ROOT_DIR ?
-.env in service folder (MLBox/Services)?
-.config.py in service folder?
-.config.py + .env in service folder ?
-
-PEANUT_HF_REPO_ID=PolovyyVitaliy/peanuts-seg-yolo8s
-=PEANUT_HF_MODEL_FILE=peanuts-seg-yolo8s.pt
-PEANUT_IMAGE_SIZE=1024
-PEANUT_CROPPED_IMAGE_SIZE=100
-
-
-===== What is the best practice for handling errors?
-try - except?
 
 
 ===== image size for training, and for prediction, preprocessing

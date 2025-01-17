@@ -29,13 +29,22 @@ Project Folder Structure
 Vitaliy’s mentor recommended the following structure, which helps organize assets, services, and model files:
 MLBox
 ├── assets       # Configs, documentation, test files
-├── mlbox        # Core package with specific ML services
-│   ├── services # Each subfolder here is a distinct service
-│   └── utils    # Shared utility functions
-├── models       # Model files (e.g., YOLOv8)
-├── notebooks    # Jupyter notebooks for experiments
-├── scripts      # Processing and training scripts
-└── tests        # Unit tests
+│   ├── docs
+│   ├── configs
+│   ├── models
+│   └── DataSet
+├── mlbox               # Core package with specific ML services
+│   ├── services        # Each subfolder here is a distinct service
+│       └──  peanuts
+│   ├── utils           # Shared utility functions
+│   └── models          # packages with models classes for specific services
+│       └── peanuts
+│           ├── detection
+│           └── cls
+├── models              # Model files (e.g., YOLOv8)
+├── notebooks           # Jupyter notebooks for experiments
+├── scripts             # Processing and training scripts
+└── tests               # Unit tests
 
 Key Assumptions and Structure
   

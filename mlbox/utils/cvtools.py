@@ -20,6 +20,7 @@ from typing import Dict, List, Optional, Tuple
 import cv2
 import numpy as np
 import pycocotools.mask as coco_mask
+from PIL import Image as PILImage
 
 from mlbox.settings import DEBUG_MODE, ROOT_DIR
 
@@ -394,7 +395,7 @@ def preprocess_images_with_white_rectangle(
     input_images: List[np.ndarray],
     a4_ratio: float = 297 / 210,
     target_width: Optional[int] = None,
-    padding_percent: float = 0.01,
+    padding_percent: float = 0.005,
 ) -> List[Tuple[np.ndarray, float]]:
     """
     Preprocess a batch of images containing white rectangles (e.g., A4 paper) for further analysis.

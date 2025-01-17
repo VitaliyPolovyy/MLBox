@@ -1,11 +1,15 @@
-curl -X POST "https://ite.roshen.com:4433/WS/api/_MLBOX_HANDLE_RESPONSE?call_in_async_mode=false" -H "accept: application/xml" -H "Content-Type: application/json" -d "{ \"result_json\": {}, \"result_service_json\": {} }"
+curl.exe -X POST -F "image=@C:\My storage\Python projects\MLBox\tmp\peanuts\input\D21010101000007__12282__JALMO4325686-624__0126.jpg" -F 'json={\"service_code\": \"1\", \"alias\": \"DMS\", \"key\": \"   9127673     1\", \"response_method\": \"HTTP_POST_REQUEST\", \"response_endpoint\": \"https://ite.roshen.com:4433/WS/api/_MLBOX_HANDLE_RESPONSE?call_in_async_mode=false\"}'  http://172.17.19.18:8000/peanuts/process_image
 
 
+# redirect port to wsl
+netsh interface portproxy delete v4tov4 listenport=8000 listenaddress=0.0.0.0
+netsh interface portproxy add v4tov4 listenport=8000 listenaddress=0.0.0.0 connectport=8000 connectaddress=172.17.19.18
+netsh interface portproxy show all
 
-curl -X POST -F "image=@\"C:\My storage\Python projects\MLBox\tmp\peanuts\input\D21010101000001__14972__V223-011__0026.jpg\"" -F "service_code=1" http://172.20.85.74:8000/mlbox
 
-curl -X POST -F "image=@C:\My storage\Python projects\MLBox\assets\DataSet\peanuts\task6\D21010101000026__12835__C9601123601__0032.jpg" -F "service_code=1" http://172.20.85.74:8000/mlbox
+# for installing yolo at vast ai
+sudo apt-get update
+sudo apt-get install -y libgl1
+pip install ultralytics
 
-
-curl -X POST -F "image=@C:/My storage/Python projects/MLBox/assets/DataSet/peanuts/task6/D21010101000026__12835__C9601123601__0032.jpg" -F "service_code=1" -F "alias=your_alias" -F "alias_key=your_alias_key" http://172.20.85.74:8000/process_image
 

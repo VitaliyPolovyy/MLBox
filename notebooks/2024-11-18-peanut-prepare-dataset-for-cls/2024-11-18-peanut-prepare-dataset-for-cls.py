@@ -9,11 +9,12 @@ from dotenv import load_dotenv
 from huggingface_hub import hf_hub_download
 from ultralytics import YOLO
 
-from mlbox.models.peanuts.detection.yolo_detector_model import \
-    YOLOPeanutsDetector
+from mlbox.models.peanuts.detection.yolo_detector_model import YOLOPeanutsDetector
 from mlbox.settings import DEBUG_MODE, ROOT_DIR
-from mlbox.utils.cvtools import (detect_white_rectangles,
-                                 preprocess_images_with_white_rectangle)
+from mlbox.utils.cvtools import (
+    detect_white_rectangles,
+    preprocess_images_with_white_rectangle,
+)
 
 CURRENT_DIR = Path(__file__).parent
 
