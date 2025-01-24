@@ -1,4 +1,4 @@
-curl.exe -X POST -F "image=@C:\My storage\Python projects\MLBox\tmp\peanuts\input\D21010101000007__12282__JALMO4325686-624__0126.jpg" -F 'json={\"service_code\": \"1\", \"alias\": \"DMS\", \"key\": \"   9127673     1\", \"response_method\": \"HTTP_POST_REQUEST\", \"response_endpoint\": \"https://ite.roshen.com:4433/WS/api/_MLBOX_HANDLE_RESPONSE?call_in_async_mode=false\"}'  http://172.17.19.18:8000/peanuts/process_image
+curl.exe -X POST -F "image=@C:\temp\2025_01_24\1_0005.jpg" -F 'json={\"service_code\": \"1\", \"alias\": \"DMS\", \"key\": \"   9127673     1\", \"response_method\": \"HTTP_POST_REQUEST\", \"response_endpoint\": \"https://ite.roshen.com:4433/WS/api/_MLBOX_HANDLE_RESPONSE?call_in_async_mode=false\"}'  http://10.11.192.143:8000/peanuts/process_image
 
 
 # redirect port to wsl
@@ -11,5 +11,12 @@ netsh interface portproxy show all
 sudo apt-get update
 sudo apt-get install -y libgl1
 pip install ultralytics
+
+
+
+
+netsh interface portproxy show all
+netsh interface portproxy delete v4tov4 listenport=8000 listenaddress=0.0.0.0
+netsh interface portproxy add v4tov4 listenport=8000 listenaddress=0.0.0.0 connectport=8000 connectaddress=172.17.22.211
 
 
