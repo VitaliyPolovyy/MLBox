@@ -1,0 +1,62 @@
+git --- DONE ---
+- ML ops: Ray Serve: EPR=>Ray=>ITE (prototype requests)
+- script utils: create "cvtools.py"
+- script preprocessing: create script for converting raw images into clear dataset images ("a4_image_processor.py")
+- dataset: take photos of all batches of peanuts
+- dataset: rename the files according to the peanut batches
+- dataset: a4 preprocessing of raw images
+- dataset: auto annotation of 50 images
+- dataset: manually annotation of 50 images: 90sec per image
+- dataset 2: cut out peanuts individually and save them as separate images - test
+- dataset: auto annotation of all images
+- vast.ai: prepare script
+- dataset: agree on an annotation with Svitlana
+- vast.ai: train YOLOv8 on 50 pictures
+- Git: create repo and commit, share to Andrii
+- ML ops:  WSL
+- VS Code
+- ML: install PyEnv
+- ML: install poetry
+- RAY: settings up and test
+- dataset: join dataset (760 images)
+- train yolo on vast.ai (1024)
+- test trained yolo (1024)
+- Integrate huggingface_hub
+- format code with isort and black
+- create peanut.py with basic workflow
+- DATASET for  class : cut out peanuts individually and save them as separate images
+- run serve ray using  use Serve config
+- send image to ray serve from ERP
+- retrain yolov8seg to show Andrew
+- detect_white_rec - is broken
+- DATASET for  class: prepare dataset for training
+- use palint
+- use json schema for: response
+
+--- IN PROGRESS ---
+
+
+- collect the  pictures of corex for new task
+
+- how to detect multymodes data
+
+
+- find out how to backup project rightly
+- explore how to organize taking photo for ML in remote 
+
+
+- explore git
++ "ML in production" course on coursera: 
+
+
+
+--- NEXT ---
+
+
+- bad result
+--- bad masks
+--- bad rotated bounding boxes
+--- bad fit elipse 
+
+- Integrate dataset control version for dataset
+- train yolo on vast.ai (640) and compare with (1024)

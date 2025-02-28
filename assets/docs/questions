@@ -1,0 +1,37 @@
+1. how to run solution as prod (docker?)
+2. чи норм юзати http request для взаємодії з ML сервісом? Що дорослі пацани юзають?
+3. review code:
+-mlbox\services\peanuts\peanuts.py
+-mlbox\services\peanuts\datatype.py
+-mlbox\services\peanuts\datatype.py
+-deployments\peanut_deployment.py
+-deployments\ray_serv.yaml
+
+
+4. Паттерни поведінки
+5. Інші моделі для instance segmentation
+
+дрібнички:
+=== is pylint ok?
+"Missing class docstring"?
+
+=== loguru and serve
+зараз таку помилку видає _pickle.PicklingError: Cannot pickle files that are not opened for reading 
+
+=== remote() зламався
+
+
+
+
+MLBox\scripts\train\2024-11-26-yolov8s-cls
+
+
+===== MLBox What's scenario training of model with vast.ai
+Now, I manually create folders, copy dataset, training script, install libs etc
+It seems silly
+
+
+
+===== image size for training, and for prediction, preprocessing
+
+===== Ray Batch processing, concurrency

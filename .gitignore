@@ -1,0 +1,11 @@
+models/
+service/peanuts/run/
+assets/configs/
+assets/datasets/
+tmp/
+scripts/train/*/train*/
+scripts/train/*/experiment*/
+.env
+*.png
+*.jpg
+*.pt
