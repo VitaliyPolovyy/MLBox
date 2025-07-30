@@ -182,7 +182,7 @@ class PeanutProcessingResult:
                 font_thickness,
             )
 
-            if peanut.mask is not None:
+            if peanut.mask is not None and False:
                 contours, _ = cv2.findContours(peanut.mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
                 cv2.drawContours(cv_image, contours, -1, (0,0,150), 2)
 

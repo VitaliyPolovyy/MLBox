@@ -1,0 +1,48 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Data and models (consider excluding large datasets and models)
+data/
+assets/datasets/
+tmp/
+logs/
+*.pt
+*.pth
+*.onnx
+*.tflite
+
+# Notebooks
+notebooks/
+.ipynb_checkpoints

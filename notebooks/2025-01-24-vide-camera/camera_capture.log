@@ -1,0 +1,92 @@
+2025-04-14 11:20:27,051 - INFO - Starting camera capture script. Images will be saved to /mnt/c/My storage/Python projects/MLBox/tmp/2025-01-24-vide-camera/output
+2025-04-14 11:20:27,051 - INFO - Capture window: 02:30:00 to 17:30:00
+2025-04-14 11:20:27,052 - INFO - Target capture rate: 1 FPS
+2025-04-14 11:20:27,052 - INFO - Camera timestamp enabled: True
+2025-04-14 11:20:27,052 - INFO - Starting main capture loop...
+2025-04-14 11:20:27,052 - INFO - Attempting to establish camera connection...
+2025-04-14 11:20:27,053 - INFO - Attempting to connect to camera (attempt 1/5)...
+2025-04-14 11:20:29,508 - INFO - Detected camera FPS: 20.0
+2025-04-14 11:20:29,509 - INFO - Will skip approximately 19 frames between captures
+2025-04-14 11:20:29,509 - INFO - Camera timestamp not available, using system time instead
+2025-04-14 11:20:29,510 - INFO - Successfully connected to camera
+2025-04-14 11:20:30,449 - INFO - Saved frame #1 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:31,414 - INFO - Saved frame #2 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:32,450 - INFO - Saved frame #3 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:33,366 - INFO - Saved frame #4 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:34,400 - INFO - Saved frame #5 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:35,417 - INFO - Saved frame #6 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:36,405 - INFO - Saved frame #7 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:37,391 - INFO - Saved frame #8 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:38,423 - INFO - Saved frame #9 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:39,433 - INFO - Saved frame #10 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:40,357 - INFO - Saved frame #11 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:41,369 - INFO - Saved frame #12 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:42,386 - INFO - Saved frame #13 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:43,393 - INFO - Saved frame #14 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:44,405 - INFO - Saved frame #15 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:45,393 - INFO - Saved frame #16 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:46,414 - INFO - Saved frame #17 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:47,406 - INFO - Saved frame #18 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:48,409 - INFO - Saved frame #19 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:49,432 - INFO - Saved frame #20 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:50,437 - INFO - Saved frame #21 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:51,409 - INFO - Saved frame #22 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:52,426 - INFO - Saved frame #23 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:53,406 - INFO - Saved frame #24 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:54,434 - INFO - Saved frame #25 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:55,418 - INFO - Saved frame #26 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:56,376 - INFO - Saved frame #27 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:57,415 - INFO - Saved frame #28 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:58,426 - INFO - Saved frame #29 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:20:59,421 - INFO - Saved frame #30 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:00,366 - INFO - Saved frame #31 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:01,365 - INFO - Saved frame #32 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:02,360 - INFO - Saved frame #33 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:03,416 - INFO - Saved frame #34 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:04,442 - INFO - Saved frame #35 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:05,394 - INFO - Saved frame #36 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:06,368 - INFO - Saved frame #37 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:07,369 - INFO - Saved frame #38 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:08,379 - INFO - Saved frame #39 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:09,375 - INFO - Saved frame #40 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:10,394 - INFO - Saved frame #41 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:11,402 - INFO - Saved frame #42 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:12,392 - INFO - Saved frame #43 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:13,356 - INFO - Saved frame #44 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:14,352 - INFO - Saved frame #45 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:15,393 - INFO - Saved frame #46 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:16,407 - INFO - Saved frame #47 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:17,393 - INFO - Saved frame #48 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:18,403 - INFO - Saved frame #49 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:19,386 - INFO - Saved frame #50 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:20,401 - INFO - Saved frame #51 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:21,385 - INFO - Saved frame #52 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:22,382 - INFO - Saved frame #53 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:23,399 - INFO - Saved frame #54 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:24,415 - INFO - Saved frame #55 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:25,393 - INFO - Saved frame #56 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:26,403 - INFO - Saved frame #57 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:27,411 - INFO - Saved frame #58 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:28,418 - INFO - Saved frame #59 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:29,391 - INFO - Saved frame #60 to 0713_2025_04_14_11_20_29.jpg (using camera timestamp)
+2025-04-14 11:21:30,078 - INFO - Capture stopped by user
+2025-04-14 11:21:30,113 - INFO - Script terminated after capturing 60 frames
+2025-04-14 11:21:30,113 - INFO - Total frames processed: 60
+2025-04-14 11:22:51,213 - INFO - Starting camera capture script. Images will be saved to /mnt/c/My storage/Python projects/MLBox/tmp/2025-01-24-vide-camera/output
+2025-04-14 11:22:51,214 - INFO - Capture window: 02:30:00 to 17:30:00
+2025-04-14 11:22:51,214 - INFO - Target capture rate: 1 FPS
+2025-04-14 11:22:51,214 - INFO - Camera timestamp enabled: True
+2025-04-14 11:22:51,215 - INFO - Starting main capture loop...
+2025-04-14 11:22:51,215 - INFO - Attempting to establish camera connection...
+2025-04-14 11:22:51,215 - INFO - Attempting to connect to camera (attempt 1/5)...
+2025-04-14 11:22:53,669 - INFO - Detected camera FPS: 20.0
+2025-04-14 11:22:53,670 - INFO - Will skip approximately 19 frames between captures
+2025-04-14 11:26:37,884 - INFO - Starting camera capture script. Images will be saved to /mnt/c/My storage/Python projects/MLBox/tmp/2025-01-24-vide-camera/output
+2025-04-14 11:26:37,885 - INFO - Capture window: 02:30:00 to 17:30:00
+2025-04-14 11:26:37,885 - INFO - Target capture rate: 1 FPS
+2025-04-14 11:26:37,886 - INFO - Camera timestamp enabled: True
+2025-04-14 11:26:37,886 - INFO - Starting main capture loop...
+2025-04-14 11:26:37,886 - INFO - Attempting to establish camera connection...
+2025-04-14 11:26:37,887 - INFO - Attempting to connect to camera (attempt 1/5)...
+2025-04-14 11:26:40,321 - INFO - Detected camera FPS: 20.0
+2025-04-14 11:26:40,323 - INFO - Will skip approximately 19 frames between captures

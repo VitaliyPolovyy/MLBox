@@ -1,0 +1,2321 @@
+Block ID: 1
+Status: not found
+Score: 50.0
+
+Searched text:
+ГП
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 2
+Status: not found
+Score: 66.66666666666667
+
+Searched text:
+Код
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 3
+Status: not found
+Score: 20.79207920792079
+
+Searched text:
+14722BA6R04H012, 14722BA6R04H013, 14722BA6R04HZ63, 14722BA6R0XA012, 14722BA6R04HC92, 14722BA6R04HZ62, 14722BA6R04HAL2, 14722BA6R04HAL3, 14722BA6R04HS32, 14722BA6R04HCP2, 14722BA6R04HDB2, 14722BA6R04H212
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 4
+Status: not found
+Score: 50.0
+
+Searched text:
+ГП
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 5
+Status: not found
+Score: 50.0
+
+Searched text:
+Найменування
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 6
+Status: not found
+Score: 27.20812182741117
+
+Searched text:
+Сдобное печенье Lovita Classic Cookies с кусочками глазури ВКФ 150г /16шт, Сдобное печенье Lovita Classic Cookies с кусочками глазури ККФ 150г /16шт, Сдобное печенье Lovita Classic Cookies с кусочками глазури ККФ 150г /16шт АКЦИЯ Сильпо, Сдобное печенье Lovita Classic Cookies с кусочками глазури ВКФ 400г /8шт, Сдобное печенье Lovita Classic Cookies с кусочками глазури ВКФ 150г /16шт АКЦИЯ Ценовая BG, Сдобное печенье Lovita Classic Cookies с кусочками глазури ВКФ 150г /16шт АКЦИЯ Сильпо, Сдобное печенье Lovita Classic Cookies с кусочками глазури ВКФ 150г /16шт АКЦИЯ АТБ, Сдобное печенье Lovita Classic Cookies с кусочками глазури ККФ 150г /16шт АКЦИЯ АТБ, Сдобное печенье Lovita Classic Cookies с кусочками глазури ВКФ 150г /16шт АКЦИЯ ИЗЮМИНКА, Сдобное печенье Lovita Classic Cookies с кусочками глазури ВКФ 150г /16шт MAL, Сдобное печенье Lovita Classic Cookies с кусочками глазури ВКФ 150г /16шт DE, Сдобное печенье Lovita Classic Cookies с кусочками глазури ВКФ 150г /16шт IL
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 7
+Status: found
+Score: 100.0
+
+Searched text:
+Номер
+
+Matched text (start):
+(RU) ПЕЧЕНЬЕ СДОБНОЕ "LOVITA" КЛАССИК КУКИС" С КУСОЧКАМИ ГЛАЗУРИ. Состав: сахар, мука пшеничная, жир растительный (негидрогенизированное пальмовое масло, полностью гидрогенизированное пальмоядровое масло, негидрогенизированное пальмоядровое масло), крахмал пшеничный, какао-порошок с пониженным содержанием жира 4%, меланж яичный, молоко сухое обезжиренное, разрыхлители (гидрокарбонат аммония, дигидропирофосфат натрия, гидрокарбонат натрия), соль, эмульгаторы лецитины (содержит сою), ароматизатор, регулятор кислотности кислота молочная. Кусочки глазури какаосодержащей – 30%. Может содержать арахис, фундук, миндаль, кунжут. Хранить при температуре (18±5)°С и относительной влажности не выше 75%. Импортер в Республику Казахстан: ТОО "Кондитер-Азия", Республика Казахстан, г. Алматы, Жетысуский р-н, пр. Райымбека, 169, 050050, г. Алматы, а/я № 169.  (KZ) ГЛАЗУРЬ ТІЛІМДЕРІ БАР "LOVITA" CLASSIC COOKIES" МАЙҚОСПА ПЕЧЕНЬЕСІ. Құрамы: қант, бидай ұны, өсімдік майы (сутектендірілмеген  пальма майы, толықтай сутектендірілген пальма дәнінің майы, сутектендірілмеген пальма дәнінің майы), бидай крахмалы, майдың құрамы төмен какао-ұнтақ 4%, жұмыртқа меланж, майы алынған құрғақ сүт, қопсытқыштар (аммоний гидрокарбонаты, натрий дигидропирофосфаты, натрий гидрокарбонаты), ас тұзы, эмульгаторлар лецитиндер (құрамында соя бар), хошиістендіргіш, қышқылдықты реттеуіш сүт қышқылы. Құрамында какаосы бар глазурь тілімдері – 30%. Құрамында жержаңғақ, орман жаңғағы, бадам, күнжіт болуы мүмкін. (18±5)°С температура мен 75%-дан жоғары емес ауаның салыстырмалы ылғалдылығы жағдайында сақтау керек. Қазақстан Республикасындағы импорттаушы: "Кондитер-Азия" ЖШС, Қазақстан Республикасы, Алматы қ., Жетісу ауданы, Райымбек даңғылы, 169, 050050, Алматы қ., а/ж № 169.  (AM) Թխվածքաբլիթ «Լովիտա կլասիկ քուքիս» ջնարակի կտորներով: Բաղադրությունը՝ շաքար, ցորենի ալյուր, բուսական ճարպ (չհիդրոգենացված արմավենու յուղ, ամբողջովին հիդրոգենացված արկավենու միջուկի յուղ, չհիդրոգենացված արմավենու միջուկի յուղ), ցորենի օսլա, ցածր յուղայնության կակաոյի փոշի 4%, ձվի մելանժ, յուղազերծված կաթի փոշի, փխրեցուցիչներ (ամոնիումի հիդրոկարբոնատ, նատրիումի հիդրոկարբոնատ, նատրիումի երկհիդրոպիրոֆոսֆատ), աղ, էմուլգատորներ՝ լեցիտիններ (պարունակում է սոյա), բուրավետիչ, թթվայնության կարգավորիչ՝ կաթնաթթու։ Ջնարակի կտորներ՝ 30%։ Կարող է պարունակել գետնանուշ, պնդուկ, նուշ, քունջութ։ Պահել (18±5)°С ջերմաստիճանի և 75%-ից ոչ բարձր օդի հարաբերական խոնավության պայմաններում: Հայաստանում Ներմուծող` «Դի-Դի-Թրեյդ» ՍՊԸ, ՀՀ, ք. Երևան, Ար. Միկոյան 37/8։  (GE) ორცხობილა «ლოვიტა» კლასიკ ქუქის» სარკალას ნატეხებით. ინგრედიენტები: შაქარი, ხორბლის ფქვილი, მცენარეული ცხიმი (არაჰიდროგენირებული პალმის ზეთი, სრულად ჰიდროგენირებული პალმის გულის ზეთი, არაჰიდროგენირებული პალმის გულის ზეთი), ხორბლის სახამებელი, კაკაოს ფხვნილი ცხიმის დაბალი შემცველობით 4%, კვერცხის მელანჟი, უცხიმო რძის ფხვნილი, გამაფხვიერებელი კომპონენტები (ამონიუმის ჰიდროკარბონატი, ნატრიუმის დიჰიდროპიროფოსფატი, ნატრიუმის ჰიდროკარბონატი), მარილი, ემულგატორები ლეციტინები (შეიცავს სოიოს), არომატიზატორი, მჟავიანობის რეგულატორი რძემჟავა. კაკაოს შემცველი მინანქრის ნატეხები – 30%. შეიძლება შეიცავდეს არაქისს, თხილს, ნუშს, სეზამის მარცვლებს. ინახება (18±5)°С ტემპერატურისა და არაუმეტეს 75% ჰაერის ფარდობითი ტენიანობის პირობებში. ოფიციალური იმპორტიორი საქართველოში: შპს "როშენ ჯორჯია" საქართველო, ქ. თბილისი, სამგორის რაიონი, თენგიზ ჩანტლაძის ქ., N40/დიდი ლილო, თეთრი ხევის დასახლება, ტელ. +995 322 98 98 28. დამზადებულია უკრაინაში. (AZ) MİNA TİKƏLƏRİ İLƏ ŞİRNİLİ PEÇENYE “LOVITA” KLASSİK KUKİS”. Tərkibi: şəkər, buğda unu, bitki yağı (hidrogenezə olunmamış palma yağı, tamhidrogenezə olunmuş palma tumu yağı, hidrogenezə olunmamış palma tumu yağı),  buğda nişastası, tərkibində yağın miqdarı azaldılmış kakao tozu 4%, yumurta melanjı, quru yağsız süd, yumşaldıcılar (ammonium hidrokarbonat, natrium dihidropirofosfat, natrium hidrokarbonat), duz, emulqatorlar lesitinlər (tərkibində soya var), aromatizator, turşuluq tənzimləyicisi – süd turşusu. Tərkibində kakao olan mina tikələri – 30%. Tərkibində yerfındığı, fındıq, badam, küncüt ola bilər. (18±5)°С-dən çox olmayan temperaturda və 75%-dən çox olmayan nisbi rütubət şəraitində saxlayın. İdxalçı: “Aqro-Vest DC” MMC, Azərbaycan res.,Bakı şəh., Sabunçu ray., Bakıxanov qəs., B. Bünyadov küç., 12. Tel: +994124255090.  (BA) „LOVITA“, KEKS SA KOMADIĆIMA GLAZURE (30%). Sastojci: šećer, pšenično brašno, biljne masti (nehidrogenizirano palmino ulje, potpuno hidrogenirano ulje palminih koštica, nehidrogenizirano ulje palminih koštica), pšenični škrob, kakao prah smanjene masti 4%, pasterizirano tekuće jaje, obrano mlijeko u prahu, sredstva za rahljenje (amonijev hidrogen karbonat, dinatrijev difosfat, natrijev hidrogen karbonat), sol, emulgatori lecitini (sadrži soju), arome, regulator kiselosti mliječna kiselina. Može sadržavati kikiriki, lješnjake, bademe, sjemenke sezama. Čuvati na 18±5°С i relativnoj vlažnosti max 75%. Uvoznik za BiH: Bingo d.o.o., ul. Bosanska poljana bb, 75000 Tuzla, Bosna i Hercegovina, tel./fax: +38735368900/905, www.bingotuzla.ba, info@bingotuzla.ba. Zemlja porijekla: Ukrajina.  (MK) "LOVITA" КЛАСИЧНИ БИСКВИТИ“, БИСКВИТИ СО КАПКИ ОД ЧОКОЛАДО (30%). Состав: шеќер, пченично брашно, растителни масти (нехидрогенизирано палмино масло, целосно хидрогенизирано палмово јадро, нехидрогенизирано масло од палмово јадро), пченичен скроб, какао во прав со намалени масти 4%, пастеризирано течно јајце, обезмастено млеко во прав, подигање агенси (амониум хидроген карбонат, динатриум дифосфат, натриум хидроген карбонат), сол, емулгатори лецитини (содржат соја), ароми, регулатор на киселост млечна киселина. Може да содржи кикирики, лешници, бадеми, сусам. Да се чува на (18±5)°С и релативна влажност на воздухот не повеќе од 75%. Увозник и дистрибутер за Северна Македонија: А-Инвест ДООЕЛ, ул. 20 бр. 80, Бразда, Чучер Сандево, Скопје. Тел.: 070325800, e-mail: import@ainvest.com.mk. Земја на потекло Украина.  (AL)(RMV)(RKS) "LOVITA" BISKOTA KLASIKE", BISKOTA ME PIKA ÇOKOLLADE (30%). Përbërësit: sheqer, miell gruri, yndyrë vegjetale (vaj palme jo i hidrogjenizuar, vaj palme plotësisht i hidrogjenizuar, vaj palme jo i hidrogjenizuar), niseshte gruri, pluhur kakao me pak yndyrë 4%, vezë të lëngshme të pasterizuar, qumësht pluhur i skremuar, rrit agjentë (hidrogjen karbonat amonit, difosfat dinatriumi, hidrogjen karbonat natriumi), kripë, emulsifikues lecitina (përmbajnë soje), aromatizues, rregullues i aciditetit acid laktik. Mund të përmbajë kikirikë, lajthi, bajame, fara susami. Mbajeni në (18±5)°С dhe lagështinë relative të ajrit jo më shumë se 75%. Importues dhe distributor për Shqipëri: Dauti Komerc SH.P.K. Adresa: fsh. Vrine ShenVlash 257/40 Zona Kadastrale 3385. Tel./mob: 067/208-8004. E-mail: infodurres@dauti.com.mk. Importues dhe Distributor për Maqedonisë e Veriut: A-Invest DOOEL, Rr. 20 nr. 80, Brazda, Çuçer Sandevo, Shkup. Tel.: 070325800, e-mail: import@ainvest.com.mk. Importues dhe distributor për Republiken e Kosovës: ALMA KOS SH.P.K. Adresa: Konjuh, Lipjan Kosove, Kontakti 044/442-022. e-mail: almakos2008@gmail.com. Vendi i origjinës: Ukrainë. (BG) "LOVITA" CLASSIC COOKIES", БИСКВИТИ С ПАРЧЕНЦА КАКАОВА ГЛАЗУРА. Съставки: захар, пшенично брашно, растителни мазнини (нехидрогенирано палмово масло, напълно хидрогенирано масло от палмови ядки, нехидрогенирано масло от палмови ядки), пшенично нишесте, какао на прах с ниско съдържание на мазнини 4%, яйчен меланж, обезмаслено мляко на прах, набухватели (амониев бикарбонат, натриев бикарбонат, динатриев дифосфат), сол, емулгатори лецитини (съдържат соя), ароматизант, регулатор на киселинността млечна киселина. Парченца какаова глазура 30%. Може да съдържа фъстъци, лешници, бадеми, сусам. Да се съхранява при (18±5)°C и относителна влажност на въздуха не по-висока от 75%. Вносител за България: Рошен България ЕООД, бул. България 81Б, ет. 4, гр. София, 1404, България. Страна на произход: Украйна.  (PL) “LOVITA CLASSIC COOKIES”, Ciastka z kawałkami polewy kakaowej (30%). Składniki: cukier, mąka pszenna, oleje roślinne (palmowy, z ziaren palmowych całkowicie utwardzony, z ziaren palmowych), skrobia pszenna, kakao w proszku o obniżonej zawartości tłuszczu 4%, jaja pasteryzowane w płynie, mleko w proszku odtłuszczone, substancje spulchniające: wodorowęglan amonu, difosforan disodowy, wodorowęglan sodu; sól, emulgator: lecytyny (zawiera soje); aromat, regulator kwasowości: kwas mlekowy. Może zawierać: orzeszki ziemne, orzechy laskowe, migdały, nasiona sezamu. Przechowywać w suchym i chłodnym miejscu. Importer w Polsce: ROSHEN EUROPE Sp. z o.o., ul. Patriotów 195/C2/C5, 04-858 Warszawa, Polska.  (LV) CEPUMI “LOVITA CLASSIC COOKIES” AR GLAZŪRAS GABALIŅIEM (30%). Sastāvdaļas: cukurs, kviešu milti, augu eļļas (palmu eļļa, pilnībā hidrogenēta palmu kodolu eļļa, palmu kodolu eļļa), kviešu ciete, kakao pulveris ar samazinātu tauku saturu 4%, olu baltumu un dzeltenumu maisījums, vājpiena pulveris, irdinātāji: amonija hidrogēnkarbonāts, dinātrija difosfāts, nātrija bikarbonāts; sāls, emulgatori: lecitīni (satur soju), aromatizētājs, skābuma regulētājs: pienskābe. Produkts var saturēt zemesriekstus, lazdu riekstus, mandeles un sezama sēklas. Uzglabāt 18±5°C temperatūrā, ja gaisa relatīvais mitrums nepārsniedz 75%. Importētājs ES: UAB „Roshen Nord“, Svajonės g. 27, LT-94101, Klaipėda, LIETUVA. Tel.: +37052409524, e-mail: info@roshen-nord.lt. Izcelsmes valsts: Ukraina.     (UA) ПЕЧИВО ЗДОБНЕ "LOVITA" CLASSIC COOKIES" З КУСОЧКАМИ ГЛАЗУРІ. Склад: цукор, борошно пшеничне, жир рослинний (негідрогенізована пальмова олія, повністю гідрогенізована пальмоядрова олія, негідрогенізована пальмоядрова олія), крохмаль пшеничний, какао-порошок зі зниженим вмістом жиру 4%, меланж яєчний, молоко сухе знежирене, розпушувачі (гідрокарбонат амонію, дигідропірофосфат натрію, гідрокарбонат натрію), сіль, емульгатори лецитини (містить сою), ароматизатор, регулятор кислотності кислота молочна. Шматочки глазурі какаовмісної – 30%. Може містити арахіс, фундук, мигдаль, кунжут. Зберігати за температури (18±5)°С і відносної вологості повітря не вище 75%. (v181224E) Класичне печиво. Какао.  (RO)(MD) "LOVITA" CLASSIC COOKIES", BISCUIȚI CU BUCĂȚI DE GLAZURĂ (30%). Ingrediente: zahăr, făină de grâu, grăsimi vegetale (ulei de palmier nehidrogenat, ulei de miez de palmier complet hidrogenat, ulei de miez de palmier nehidrogenat), amidon de grâu, pudră de cacao cu conținut redus de grăsimi 4%, ou lichid pasteurizat, lapte praf degresat, agenți de creștere (carbonat acid de amoniu, difosfat disodic, bicarbonat de sodiu), sare, emulgatori lecitine (conțin soia), arome, regulator de aciditate acid lactic. Poate conține arahide, alune, migdale, semințe de susan. A se păstra la temperatura de (18±5)°С și umiditatea relativă a aerului de 75% maxim. Importator în România: ROSHEN ONE SRL, Blv. Tudor Vladimirescu, nr. 22, Green Gate, unitatea 5, Etaj 5, Sectorul 5, Bucuresti, Romania. Tel. +40761808972. Importator în R. Moldova: SRL «ROSHEN SWEET», R. Moldova, mun. Chișinău, str. I. Zaikin, 10/6, tel.: +37322238301. Ţara de origine: Ucraina.   Виробник, місцезнаходження: / Изготовитель, место нахождения: / Өндіруші, орналасқан жері: / İstehsalatçı, istehsalat yeri: / Proizvođač, mjesto proizvodnje: / Արտադրող, արտադրման վայրը`  [ A ] – ПрАТ "Вінницька кондитерська фабрика" (ЧАО "Винницкая кондитерская фабрика"/“Վիննիցկայա հրուշակեղենային ֆաբրիկա” ՄԲԸ/"Винница кондитер фабрикасы" ЖАҚ), вул. Є. Коно-  вальця, 8, м. Вінниця, 21001, Україна (Украина / Ուկրաինա); адреса виробництва: / адрес производства: / өндіріс мекен-жайы: / արտադրման վայրը` вул. Батозька, 2-К, м. Вінниця, 21015, Україна (Украина / Ուկրաինա). / "Vinnitskaya qənnadı fabriki" ÖSC, E. Konovaltsa küç. 8, Vinnitsa ş., 21001, Ukrayna, istehsalat yeri: Batojskaya küç., 2-K, Vinnitsa ş., 21015, Ukrayna. / PJSC "Vinnytsia Confectionery Factory", st. Ye. Konovaltsia, 8, Vinnytsia, 21001, Ukraine; mjesto proizvodnje: st. Batozka, 2-K, Vinnytsia, 21015, Ukraine. Tel.: 0-800-300-970. www.roshen.com. [ H ] – ПрАТ "Київська кондитерська фабрика "Рошен" (ЧАО "Киевская кондитерская фабрика "Рошен"/“Կիևի հրուշակեղենային ֆաբրիկա” “Ռոշեն” ՄԲԸ/ЖАҚ "Киев кондитер фабрикасы "Рошен"), пр-т Науки, 1, м. Київ, 03039, Україна (Украина/Ուկրաինա); адреса виробництва:/адрес производства:/өндіріс мекен-жайы:/արտադրման վայրը` вул. Привокзальна, 82, м. Бориспіль, Київська обл., 08304, Україна (Украина / Ուկրաինա). / "Roşen" Kiev qənnadı fabriki" ÖSC, Nauki pr-ti., 1, Kiev ş., 03039, Ukrayna, istehsalat yeri: Privokzalnaya küç., 82, Borispol ş., Kiev vilayəti, 08304, Ukrayna. / PJSC "Kyiv Roshen Confectionery Factory", Nauky Avenue, 1, Kyiv, 03039, Ukraine.; mjesto proizvodnje: 82 Pryvokzalna St., Boryspil, Kyiv region, 08304, Ukraine. Tel.: 0-800-300-970. www.roshen.com. Виробник зазначений літерою після дати виготовлення. / Изготовитель обозначен буквой после даты изготовления. / Өндіруші жасап шығарылған күнінен кейінгі әріппен көрсетілген. / İstehsalçı həriflə istehsal tarixindən sonra göstərilib. / Proizvođač navodi slovo za proizvođača nakon proizvodnje. / Արտադրող, վայրը նշված է համապատասխան  տառով՝ արտադրման տարեթվից հետո:     Дата виготовлення: / Дата изготовления: / Жасалған күні: İstehsal tarixi:/Ražošanas datums:/Data fabricației:/Дата на производство:/Data wyprodukowania:/Дата на производст- во: / Datum proizvodnje: / Data e prodhimit: / Արտադրման տարեթիվը`/ დამზადების თარიღი: /  Краще спожити до:/Годен до:/Дейiн қолдану:/A se consuma, de preferinţă, înainte de:/ Saxlama müddəti:/ Ieteicams līdz:  Най-добър до:/Najlepiej spożyć przed:/Употребливо до:/Naj- bolje upotrijebiti do: / Data e skadimit: / Պիտանի է մինչև`  უმჯობესია გამოყენებულ იქნეს... მდე: /  Номер партії:/ Номер партии:/ Партия нөмірі:/ Partiyanın nömrəsi:/ Partijas numurs:/ Numărul lotului:/ Номер на партида: / Nr partii: / Лот број: / Broj serije: / Lot numri: Խմբաքանակի համարը՝/ პარტიის ნომერი: /    (AR) "لوفيتا" بسكويت كوكيز كلاسيك"، بسكويت مع قطع الشوكولاتة في الطبقة الخارجية (30%). المكونات: سكر، دقيق قمح، دهن نباتي (زيت نخيل غير مهدرج، زيت نواة نخيل مهدرج بالكامل، زيت نواة نخيل غير مهدرج)، نشا قمح، مسحوق كاكاو قليل الدسم 4%، بيض مبستر سائل، مسحوق حليب منزوع الدسم، مواد رافعة (بيكربونات الأمونيوم، فوسفات ثنائي الصوديوم، بيكربونات الصوديوم)، ملح، مستحلبات الليسيثين (تحتوي على الصويا)، نكهات صناعية ("فانيليا")، منظم حموضة (حمض اللاكتيك). يحتوي على منتجات الحليب، منتجات الصويا، منتجات البيض، الغلوتين (القمح). قد تحتوي على الفول السوداني، البندق، اللوز، بذور السمسم. يُحفظ عند (18 ± 5) درجة مئوية وألا تزيد الرطوبة النسبية للهواء عن 75%. منتج من قبل شركة روشن. بلد المنشأ: أوكرانيا.
+----------------------------------------
+
+Block ID: 8
+Status: not found
+Score: 0.0
+
+Searched text:
+рецептури
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 9
+Status: not found
+Score: 0.0
+
+Searched text:
+61078
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 10
+Status: not found
+Score: 11.764705882352944
+
+Searched text:
+Версія рецептури
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 11
+Status: not found
+Score: 0.0
+
+Searched text:
+A
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 12
+Status: not found
+Score: 0.0
+
+Searched text:
+ТУ/ДСТУ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 13
+Status: not found
+Score: 13.793103448275868
+
+Searched text:
+ТУ У 15.8-00382059.001-2003
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 14
+Status: not found
+Score: 0.0
+
+Searched text:
+Склад
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 15
+Status: not found
+Score: 0.0
+
+Searched text:
+UA
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 16
+Status: not found
+Score: 22.22222222222222
+
+Searched text:
+(UA) ПЕЧИВО ЗДОБНЕ "LOVITA" CLASSIC COOKIES" З КУСОЧКАМИ ГЛАЗУРІ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 17
+Status: not found
+Score: 19.310344827586214
+
+Searched text:
+Склад: цукор, борошно пшеничне, жир рослинний (негідрогенізована пальмова олія, повністю гідрогенізована пальмоядрова олія, негідрогенізована пальмоядрова олія), крохмаль пшеничний, какао-порошок зі зниженим вмістом жиру 4%, меланж яєчний, молоко сухе знежирене, розпушувачі (гідрокарбонат амонію, дигідропірофосфат натрію, гідрокарбонат натрію), сіль, емульгатори лецитини (містить сою), ароматизатор, регулятор кислотності кислота молочна. Шматочки глазурі какаовмісної - 30%. Може містити арахіс, фундук, мигдаль, кунжут.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 18
+Status: not found
+Score: 11.764705882352944
+
+Searched text:
+*Класичне печиво
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 19
+Status: not found
+Score: 29.97118155619597
+
+Searched text:
+Поживна цінність на 100 г/g продукту: енергетична цінність – 2097 кДж/kJ (501 ккал/kcal); жири – 25,1 г/g; з них насичені жири – 14,6 г/g; вуглеводи – 63,2 г/g; з них цукри – 36,5 г/g; білки – 4,3 г/g; сіль – 0,63 г/g. Зберігати за температури (18±5)°С і відносної вологості повітря не вище 75%.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 20
+Status: not found
+Score: 0.0
+
+Searched text:
+Склад
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 21
+Status: not found
+Score: 0.0
+
+Searched text:
+RU
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 22
+Status: not found
+Score: 22.22222222222222
+
+Searched text:
+(RU) ПЕЧЕНЬЕ СДОБНОЕ "LOVITA" КЛАССИК КУКИС" С КУСОЧКАМИ ГЛАЗУРИ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 23
+Status: not found
+Score: 18.152350081037273
+
+Searched text:
+Состав: сахар, мука пшеничная, жир растительный (негидрогенизированное пальмовое масло, полностью гидрогенизированное пальмоядровое масло, негидрогенизированное пальмоядровое масло), крахмал пшеничный, какао-порошок с пониженным содержанием жира 4%, меланж яичный, молоко сухое обезжиренное, разрыхлители (гидрокарбонат аммония, дигидропирофосфат натрия, гидрокарбонат натрия), соль, эмульгаторы лецитины (содержит сою), ароматизатор, регулятор кислотности кислота молочная. Кусочки глазури какаосодержащей - 30% Может содержать арахис, фундук, миндаль, кунжут.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 24
+Status: not found
+Score: 9.090909090909093
+
+Searched text:
+*Классическое печенье
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 25
+Status: not found
+Score: 26.400000000000002
+
+Searched text:
+Пищевая ценность 100 г продукта: белков – 4,3 г; жиров – 25,1 г; углеводов – 63,2 г; энергетическая ценность (калорийность): 2097 кДж (501 ккал). Хранить при температуре (18±5)°С и относительной влажности не выше 75%.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 26
+Status: not found
+Score: 0.0
+
+Searched text:
+Склад
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 27
+Status: not found
+Score: 0.0
+
+Searched text:
+ENG
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 28
+Status: not found
+Score: 21.91780821917808
+
+Searched text:
+(EN) "LOVITA" CLASSIC COOKIES", BISCUITS WITH COATING DROPS (30%)
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 29
+Status: not found
+Score: 21.292775665399244
+
+Searched text:
+Ingredients: sugar, wheat flour, vegetable fat (non-hydrogenated palm oil, fully hydrogenated palm kernel oil, non-hydrogenated palm kernel oil), wheat starch, fat-reduced cocoa powder 4%, pasteurized liquid egg, skimmed milk powder, raising agents (ammonium hydrogen carbonate, disodium diphosphate, sodium hydrogen carbonate), salt, emulsifiers lecithins (contain soya), flavouring, acidity regulator lactic acid. May contain peanuts, hazelnuts, almonds, sesame seeds.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 30
+Status: not found
+Score: 32.850241545893724
+
+Searched text:
+Nutritional value per 100 g: protein – 4,3 g; fat – 25,1 g; carbohydrate – 63,2 g; energy – 2097 kJ / 501 kcal. Keep at (18±5)°С and air relative humidity not more than 75%.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 31
+Status: not found
+Score: 0.0
+
+Searched text:
+АЛБАНИЯ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 32
+Status: not found
+Score: 23.088923556942277
+
+Searched text:
+(AL) "LOVITA" BISKOTA KLASIKE", BISKOTA ME PIKA ÇOKOLLADE (30%)Përbërësit: sheqer, miell gruri, yndyrë vegjetale (vaj palme jo i hidrogjenizuar, vaj palme plotësisht i hidrogjenizuar, vaj palme jo i hidrogjenizuar), niseshte gruri, pluhur kakao me pak yndyrë 4%, vezë të lëngshme të pasterizuar, qumësht pluhur i skremuar, rrit agjentë (hidrogjen karbonat amonit, difosfat dinatriumi, hidrogjen karbonat natriumi), kripë, emulsifikues lecitina (përmbajnë soje), aromatizues, rregullues i aciditetit acid laktik. Mund të përmbajë kikirikë, lajthi, bajame, fara susami.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 33
+Status: not found
+Score: 28.57142857142857
+
+Searched text:
+Mbajeni në (18±5)°С dhe lagështinë relative të ajrit jo më shumë se 75%.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 34
+Status: not found
+Score: 0.0
+
+Searched text:
+АЗЕРБАЙДЖАН
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 35
+Status: not found
+Score: 21.865889212827994
+
+Searched text:
+(AZ) MİNA TİKƏLƏRİ İLƏ ŞİRNİLİ PEÇENYE “LOVITA” KLASSİK KUKİS”Tərkibi: şəkər, buğda unu, bitki yağı (hidrogenezə olunmamış palma yağı, tamhidrogenezə olunmuş palma tumu yağı, hidrogenezə olunmamış palma tumu yağı),  buğda nişastası, tərkibində yağın miqdarı azaldılmış kakao tozu 4%, yumurta melanjı, quru yağsız süd, yumşaldıcılar (ammonium hidrokarbonat, natrium dihidropirofosfat, natrium hidrokarbonat), duz, emulqatorlar lesitinlər (tərkibində soya var), aromatizator, turşuluq tənzimləyicisi - süd turşusu. Tərkibində kakao olan mina tikələri – 30%. Tərkibində yerfındığı, fındıq, badam, küncüt ola bilər.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 36
+Status: not found
+Score: 11.111111111111116
+
+Searched text:
+*Klassik peçenye.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 37
+Status: not found
+Score: 32.20338983050848
+
+Searched text:
+100 q məhsulun qida dəyəri: enerji dəyəri – 2097 Kc (501 kkal); yağlar - 25,1 q; onlardan doymuş yağlar - 14,6 q; karbohidratlar - 63,2 q; onlardan şəkərlər – 36,5 q; zülallar - 4,3 q; duz - 0,63 q.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 38
+Status: not found
+Score: 20.75471698113207
+
+Searched text:
+(18±5)°С-dən çox olmayan temperaturda və 75%-dən çox olmayan nisbi rütubət şəraitində saxlayın.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 39
+Status: not found
+Score: 0.0
+
+Searched text:
+АРМЕНИЯ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 40
+Status: not found
+Score: 19.047619047619047
+
+Searched text:
+(AM) Թխվածքաբլիթ «Լովիտա կլասիկ քուքիս» ջնարակի կտորներով
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 41
+Status: not found
+Score: 19.18465227817746
+
+Searched text:
+Բաղադրությունը՝ շաքար, ցորենի ալյուր, բուսական ճարպ (չհիդրոգենացված արմավենու յուղ, ամբողջովին հիդրոգենացված արկավենու միջուկի յուղ, չհիդրոգենացված արմավենու միջուկի յուղ), ցորենի օսլա, ցածր յուղայնության կակաոյի փոշի 4%, ձվի մելանժ, յուղազերծված կաթի փոշի,   փխրեցուցիչներ (ամոնիումի հիդրոկարբոնատ, նատրիումի հիդրոկարբոնատ, նատրիումի երկհիդրոպիրոֆոսֆատ), աղ, էմուլգատորներ՝ լեցիտիններ (պարունակում է սոյա), բուրավետիչ, թթվայնության կարգավորիչ՝ կաթնաթթու։ Ջնարակի կտորներ՝30%։ Կարող է պարունակել գետնանուշ, պնդուկ, նուշ, քունջութ։ Սննդային արժեքը 100գ մթերքում՝ սպիտակուցներ-4.3գ, ճարպեր-25.1գ, ածխաջրեր-63.2գ; էներգետիկ արժեքը (կալորիականությունը)՝ 2097կՋ/501կկալ։ Պահել (18±3) °С ջերմաստիճանի և 75%-ից ոչ բարձր օդի հարաբերական խոնավության պայմաններում:
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 42
+Status: not found
+Score: 18.181818181818176
+
+Searched text:
+БОСНИЯ И ГЕРЦЕГОВИНА
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 43
+Status: not found
+Score: 22.22222222222222
+
+Searched text:
+(BA) „LOVITA“, KEKS SA KOMADIĆIMA GLAZURE (30%).
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 44
+Status: not found
+Score: 22.106049290515305
+
+Searched text:
+Sastojci: šećer, pšenično brašno, biljne masti (nehidrogenizirano palmino ulje, potpuno hidrogenirano ulje palminih koštica, nehidrogenizirano ulje palminih koštica), pšenični škrob, kakao prah smanjene masti 4%, pasterizirano tekuće jaje, obrano mlijeko u prahu, sredstva za rahljenje (amonijev hidrogen karbonat, dinatrijev difosfat, natrijev hidrogen karbonat), sol, emulgatori lecitini (sadrži soju), arome, regulator kiselosti mliječna kiselina. Može sadržavati kikiriki, lješnjake, bademe, sjemenke sezama. Prosječna hranjiva vrijednost za 100g proizvoda: Energija 2097kJ/501kcal, masti 25.1g, od kojih zasićene masne kiseline 14.6g, ugljikohidrati 63.2g, od kojih šećeri 36.5g, proteini 4.3g, so 0,63g. Čuvati na 18±5°С i relativnoj vlažnosti max 75%. Najbolje upotrijebiti do: datuma označenog na ambalaži. Neto težina: označena na ambalaži. Lot broj: označen na ambalaži. Zemlja porijekla: Ukrajina. Proizvođač: PJSC "Kyiv Confectionery Factory "Roshen", 1 Nauki Ave, Kyiv, 03039, Ukraine, tel: 0-800-300-970, www.roshen.com. Uvoznik za BiH: Bingo d.o.o., ul.Bosanska poljana bb, 75000 Tuzla, Bosna i Hercegovina, tel/fax: +387 35 368 900/905, www.bingotuzla.ba, info@bingotuzla.ba.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 45
+Status: not found
+Score: 9.999999999999998
+
+Searched text:
+РЕСПУБЛИКА БОЛГАРИЯ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 46
+Status: not found
+Score: 22.030981067125644
+
+Searched text:
+(BG) "LOVITA" CLASSIC COOKIES", БИСКВИТИ С ПАРЧЕНЦА КАКАОВА ГЛАЗУРА  Съставки: захар, пшенично брашно, растителни мазнини (нехидрогенирано палмово масло, напълно хидрогенирано масло от палмови ядки, нехидрогенирано масло от палмови ядки), пшенично нишесте, какао на прах с ниско съдържание на мазнини 4%, яйчен меланж, обезмаслено мляко на прах, набухватели (амониев бикарбонат, натриев бикарбонат, динатриев дифосфат), сол, емулгатори лецитини (съдържат соя), ароматизант, регулатор на киселинността млечна киселина.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 47
+Status: not found
+Score: 19.354838709677423
+
+Searched text:
+Парченца какаова глазура 30%
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 48
+Status: not found
+Score: 22.22222222222222
+
+Searched text:
+Може да съдържа фъстъци, лешници, бадеми, сусам.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 49
+Status: not found
+Score: 9.523809523809524
+
+Searched text:
+*Класически бисквити
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 50
+Status: not found
+Score: 32.38095238095238
+
+Searched text:
+.Да се съхранява при (18 ± 5) ° С и относителна влажност на въздуха не по-висока от 75%.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 51
+Status: not found
+Score: 0.0
+
+Searched text:
+КАНАДА
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 52
+Status: not found
+Score: 21.311475409836067
+
+Searched text:
+(CA) "LOVITA" CLASSIC COOKIES" WITH COATING DROPS / BISCUITS CLASSIQUES AVEC GOUTTES ENROBÉES Ingredients: Sugar, Wheat flour, Vegetable fat (non-hydrogenated palm oil, fully hydrogenated palm kernel oil, non-hydrogenated palm kernel oil), Wheat starch, Fat-reduced cocoa powder, Pasteurized liquid egg, Skimmed milk powder, Raising agents (ammonium hydrogen carbonate, disodium diphosphate, sodium hydrogen carbonate), Salt, Emulsifiers (lecithins [contain soya]), Artificial flavouring (vanilla, cream butter), Acidity regulator (lactic acid).
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 53
+Status: not found
+Score: 22.22222222222222
+
+Searched text:
+Contains: Wheat, Egg, Milk, Soy.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 54
+Status: not found
+Score: 18.518518518518523
+
+Searched text:
+May contain: Almonds, Hazelnuts, Peanuts, Sesame.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 55
+Status: not found
+Score: 21.98952879581152
+
+Searched text:
+Ingrédients : Sucre, Farine de blé, Matière grasse végétale (huile de palme non hydrogénée, huile de palmiste entièrement hydrogénée, huile de palmiste non hydrogénée), Amidon de blé, Cacao en poudre partiellement dégraissé, Œuf liquide pasteurisé, Lait écrémé en poudre, Agents levants (hydrogénocarbonate d’ammonium, diphosphate disodique, hydrogénocarbonate de sodium), Sel, Émulsifiants (lécithines [contiennent du soya]), Arôme artificiel (vanille, crème au beurre), Régulateur d’acidité (acide lactique).
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 56
+Status: not found
+Score: 27.027027027027028
+
+Searched text:
+Contient : Blé, Œuf, Lait, Soya.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 57
+Status: not found
+Score: 19.999999999999996
+
+Searched text:
+Peut contenir : Amandes, Noisettes, Arachides, Sésame.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 58
+Status: not found
+Score: 0.0
+
+Searched text:
+ХОРВАТИЯ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 59
+Status: not found
+Score: 21.4190093708166
+
+Searched text:
+(HR) LOVITA KEKSI S KOMADIĆIMA ČOKOLADE KEKS SA komadićima čokolade (30%). Sastojci: šećer, pšenično brašno, biljna mast (nehidrogenizirano palmino ulje, potpuno hidrogenizirano ulje palminih koštica, nehidrogenizirano ulje palminih koštica), pšenični škrob, kakao prah smanjenog udjela masti 4%, pasterizirano tekuće jaje, obrano mlijeko u prahu, sredstva za rahljenje (amonijev hidrogenkarbonat, dinatrijev hidrogenkarbonat, natrijev hidrogenkarbonat), sol, emulgatori lecitini (sadrži soju), aroma, regulator kiselosti mliječna kiselina. Može sadržavati kikiriki, lješnjake, bademe, sjemenke sezama. Čuvati na (18±5)°C i relativnoj vlažnosti zraka ne većoj od 75%.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 60
+Status: not found
+Score: 10.526315789473683
+
+Searched text:
+ЧЕШСКАЯ РЕСПУБЛИКА
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 61
+Status: not found
+Score: 22.26487523992322
+
+Searched text:
+(CZ) Sušenky s kousky kakaové polevy (30%). Složení: cukr, PŠENIČNÁ mouka, rostlinné tuky (palmový, plně ztužený palmojádrový, palmojádrový), PŠENIČNÝ škrob, kakaový prášek se sníženým obsahem tuku 4 %, VEJCE, sušené odstředěné MLÉKO, kypřící látky (uhličitany amonné, difosforečnany, uhličitany sodné), jedlá sůl, emulgátor: lecitin (obsahuje SÓJU), aromata, regulátor kyselosti: kyselina mléčná. Může obsahovat arašídy, lískové ořechy, mandle a sezamová semena.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 62
+Status: not found
+Score: 10.526315789473683
+
+Searched text:
+РЕСПУБЛИКА ЭСТОНИЯ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 63
+Status: not found
+Score: 17.391304347826086
+
+Searched text:
+(EE) KÜPSISED LOVITA CLASSIC COOKIES GLASUURITÜKIKESTEGA (30%).
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 64
+Status: not found
+Score: 15.981735159817356
+
+Searched text:
+Koostisosad: suhkur, nisujahu, taimsed õlid (oliiviõli, täielikult hüdrogeenitud oliivituumaõli, oliivituumaõli), nisutärklis, vähendatud rasvasusega kakaopulber 4%, muna, munavalge- ja kollase segu, täispiimapulber, kergitusained (ammooniumvesinikkarbonaat, dinaatriumdifosfaat, naatriumvesinikkarbonaat), sool, emulgaator letsitiin (sisaldab soja), lõhna- ja maitseaine, happesuse regulaator piimhape.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 65
+Status: not found
+Score: 13.157894736842103
+
+Searched text:
+Võib sisaldada maapähkleid, sarapuupähkleid, mandleid, seesamiseemneid.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 66
+Status: not found
+Score: 27.350427350427353
+
+Searched text:
+100 g toote keskmine toitumisalane teave: energiasisaldus 2097 kJ / 501 kcal; rasvad 25,1 g, millest küllastunud rasvhapped 14,6 g; süsivesikud 63,2 g, millest suhkrud 36,5 g; valgud 4,3 g, sool 0,63 g.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 67
+Status: not found
+Score: 19.444444444444443
+
+Searched text:
+Hoida temperatuuril (18±5)°C ja suhtelisel õhuniiskusel kuni 75%.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 68
+Status: not found
+Score: 13.33333333333333
+
+Searched text:
+ФРАНЦУЗСКИЕ ЮЖНЫЕ ТЕРРИТОРИИ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 69
+Status: not found
+Score: 19.753086419753085
+
+Searched text:
+(TF) BISCUITS CLASSIQUES "LOVITA", BISCUITS AVEC GOUTTES D'ENROBAGE (30%)
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 70
+Status: not found
+Score: 23.168654173764903
+
+Searched text:
+Ingrédients: sucre, farine de blé, graisse végétale (huile de palme non hydrogénée, huile de palmiste entièrement hydrogénée, huile de palmiste non hydrogénée), amidon de blé, graisse -cacao réduit en poudre 4%, oeuf liquide pasteurisé, lait écrémé en poudre, agents levants (carbonate acide d'ammonium, diphosphate disodique, carbonate acide de sodium), sel, émulsifiants lécithines (contiennent du soja), arôme, correcteur d'acidité acide lactique. Peut contenir des cacahuètes, noisettes, amandes, graines de sésame.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 71
+Status: not found
+Score: 27.55905511811023
+
+Searched text:
+Maintenir à (18±3)°С et une humidité relative de l'air ne dépassant pas 75%. Poids net, Date de production, Meilleur avant, Numéro de lot: voir sur le colis. Pays D'origine: Ukraine. Distribué par: CORE TRADING  REUNION
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 72
+Status: not found
+Score: 0.0
+
+Searched text:
+ГРУЗИЯ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 73
+Status: not found
+Score: 18.644067796610166
+
+Searched text:
+(GE) ორცხობილა «ლოვიტა» კლასიკ ქუქის» სარკალას ნატეხებით.ინგრედიენტები: შაქარი, ხორბლის ფქვილი, მცენარეული ცხიმი (არაჰიდროგენირებული პალმის ზეთი, სრულად ჰიდროგენირებული პალმის გულის ზეთი, არაჰიდროგენირებული პალმის გულის ზეთი), ხორბლის სახამებელი, კაკაოს ფხვნილი ცხიმის დაბალი შემცველობით 4%, კვერცხის მელანჟი, უცხიმო რძის ფხვნილი, გამაფხვიერებელი კომპონენტები (ამონიუმის ჰიდროკარბონატი, ნატრიუმის დიჰიდროპიროფოსფატი, ნატრიუმის ჰიდროკარბონატი), მარილი, ემულგატორები ლეციტინები (შეიცავს სოიოს), არომატიზატორი, მჟავიანობის რეგულატორი რძემჟავა. კაკაოს შემცველი მინანქრის ნატეხები - 30%. შეიძლება შეიცავდეს არაქისს, თხილს, ნუშს, სეზამის მარცვლებს.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 74
+Status: not found
+Score: 17.391304347826086
+
+Searched text:
+* კლასიკური ორცხობილა
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 75
+Status: not found
+Score: 27.424749163879603
+
+Searched text:
+კვებითი ღირებულება 100 გრამ პროდუქტზე: ენერგეტიკული ღირებულება – 2097 კილოჯოული (501 კკალ); ცხიმი - 25.1 გრამი; მათ შორის ნაჯერი ცხიმოვანი მჟავები - 14.6 გრამი; ნახშირწყლები - 63.2 გრამი; მათ შორის შაქრები – 36.5 გრამი; ცილა - 4.3 გრამი; მარილი - 0.63 გრამი.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 76
+Status: not found
+Score: 18.947368421052634
+
+Searched text:
+ინახება (18±5)°С ტემპერატურისა და არაუმეტეს 75% ჰაერის ფარდობითი ტენიანობის პირობებში.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 77
+Status: not found
+Score: 0.0
+
+Searched text:
+ГРЕЦИЯ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 78
+Status: not found
+Score: 20.574886535552196
+
+Searched text:
+(GR) "LOVITA" CLASSIC COOKIES", ΜΠΙΣΚΟΤΑ ΜΕ KOMMATAKIA ΣΟΚΟΛΑΤΑΣ (30%).Συστατικά: ζάχαρη, αλεύρι σίτου, φυτικά λίπη (μη υδρογονωμένο φοινικέλαιο, πλήρως υδρογονωμένο φοινικοπυρηνέλαιο, μη υδρογονωμένο φοινικοπυρηνέλαιο), άμυλο σίτου, κακάο σε σκόνη με μειωμένα λιπαρά 4%, υγρό παστεριωμένο αυγό, αποβουτυρωμένο γάλα σε σκόνη, διογκωτικά αρτοποιίας: όξινο ανθρακικό αμμώνιο, δισόξινο πυροφωσφορικό νάτριο, όξινο ανθρακικό νάτριο, αλάτι, γαλακτωματοποιητής: λεκιθίνη σόγιας, αρωματικές ύλες, ρυθμιστής οξύτητας: γαλακτικό οξύ. Μπορεί να περιέχει ίχνη από φιστίκια, φουντούκια, αμύγδαλα, σουσάμι.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 79
+Status: not found
+Score: 23.25581395348837
+
+Searched text:
+Διατηρείται σε ξηρό και δροσερό μέρος.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 80
+Status: not found
+Score: 9.999999999999998
+
+Searched text:
+Республіка Угорщина
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 81
+Status: not found
+Score: 19.999999999999996
+
+Searched text:
+(HU) HU Teasütemény kakaós darabkákkal (30%).
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 82
+Status: not found
+Score: 17.311233885819522
+
+Searched text:
+Összetevők: cukor, búzaliszt, növényi zsír (pálma, teljes mértékben hidrogénezett pálmamag és pálmamag), búzakeményítő, zsírszegény kakaópor 4%, pasztőrizált tojáslé, sovány tejpor, térfogatnövelő szerek (ammónium-hidrogén-karbonát, dinátrium-foszfát, nátrium-hidrogén-karbonát), étkezési só, emulgeálószerek [lecitinek (tartalmaz: szója)], aromák, savanyúságot szabályozó anyag (tejsav). Földimogyorót, mogyorót, mandulát és szezámmagot is tartalmazhat. Száraz, hűvös (15-21°C) helyen tárolandó!
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 83
+Status: not found
+Score: 22.22222222222222
+
+Searched text:
+Átlagos tápérték 100 g termékben
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 84
+Status: not found
+Score: 0.0
+
+Searched text:
+energia:
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 85
+Status: not found
+Score: 30.000000000000004
+
+Searched text:
+2097 kJ /501 kcal
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 86
+Status: not found
+Score: 0.0
+
+Searched text:
+zsír:
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 87
+Status: not found
+Score: 28.57142857142857
+
+Searched text:
+25,1 g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 88
+Status: not found
+Score: 13.33333333333333
+
+Searched text:
+amelyből telített zsírsavak:
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 89
+Status: not found
+Score: 28.57142857142857
+
+Searched text:
+14,6 g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 90
+Status: not found
+Score: 0.0
+
+Searched text:
+szénhidrát:
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 91
+Status: not found
+Score: 28.57142857142857
+
+Searched text:
+63,2 g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 92
+Status: not found
+Score: 11.764705882352944
+
+Searched text:
+amelyből cukrok:
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 93
+Status: not found
+Score: 28.57142857142857
+
+Searched text:
+36,5 g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 94
+Status: not found
+Score: 0.0
+
+Searched text:
+fehérje:
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 95
+Status: not found
+Score: 33.333333333333336
+
+Searched text:
+4,3 g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 96
+Status: not found
+Score: 0.0
+
+Searched text:
+só:
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 97
+Status: not found
+Score: 28.57142857142857
+
+Searched text:
+0,63 g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 98
+Status: not found
+Score: 21.176470588235297
+
+Searched text:
+Forgalmazza: Bonbonetti Kft., 1134 Budapest, Váci út 19. 2/6., Magyarország.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 99
+Status: not found
+Score: 15.384615384615385
+
+Searched text:
+Nettó tömeg:
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 100
+Status: not found
+Score: 10.526315789473683
+
+Searched text:
+Minőségét megőrzi:
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 101
+Status: not found
+Score: 17.777777777777782
+
+Searched text:
+Száraz, hűvös (15-21°C) helyen tárolandó!
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 102
+Status: not found
+Score: 0.0
+
+Searched text:
+ИТАЛИЯ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 103
+Status: not found
+Score: 23.666666666666668
+
+Searched text:
+(IT) BISCOTTI "LOVITA CLASSIC COOKIES" CON PEZZI DI GLASSA (30%)Ingredienti: zucchero, farina di frumento, grasso vegetale (olio di palma, olio di palmisto totalmente idrogenato, olio di palmisto), amido di frumento, cacao magro in polvere 4%, uova liquide pastorizzate, latte scremato in polvere, agenti lievitanti: bicarbonato di ammonio, difosfato disodico, bicarbonato di sodio; sale, emulsionanti: lecitine (contiene soia), aroma, correttore di acidità acido lattico. Può contenere arachidi, frutta a guscio, semi di sesamo.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 104
+Status: not found
+Score: 25.92592592592593
+
+Searched text:
+Valori nutrizionali medi per 100 g di prodotto:
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 105
+Status: not found
+Score: 30.303030303030297
+
+Searched text:
+Energia: 2097 kJ / 501 kcal,
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 106
+Status: not found
+Score: 29.508196721311474
+
+Searched text:
+Grassi: 25,1 g (di cui Acidi grassi saturi: 14,6 g),
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 107
+Status: not found
+Score: 26.415094339622648
+
+Searched text:
+Carboidrati: 63,2 g (di cui Zuccheri: 36,5 g),
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 108
+Status: not found
+Score: 22.22222222222222
+
+Searched text:
+Proteine: 4,3 g,
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 109
+Status: not found
+Score: 26.66666666666667
+
+Searched text:
+Sale: 0,63 g.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 110
+Status: not found
+Score: 28.865979381443296
+
+Searched text:
+Conservare a temperatura da +13°C a  +23°C ad umidità relativa non superiore a 75%.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 111
+Status: not found
+Score: 25.71428571428571
+
+Searched text:
+Prodotto in Ucraina. Importato da: Monolith Italia Nord Srl, via B. De Falco, 16, 80136 Napoli (NA). Tel.: +3904421908057.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 112
+Status: not found
+Score: 16.666666666666664
+
+Searched text:
+Peso netto:
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 113
+Status: not found
+Score: 22.680412371134018
+
+Searched text:
+Da consumarsi preferibilmente entro il: vedi la stampa sulla confezione, seconda riga.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 114
+Status: not found
+Score: 27.586206896551722
+
+Searched text:
+PP 5 - Raccolta PLASTICA.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 115
+Status: not found
+Score: 22.22222222222222
+
+Searched text:
+Verifica le disposizioni del tuo Comune.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 116
+Status: not found
+Score: 0.0
+
+Searched text:
+КАЗАХСТАН
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 117
+Status: not found
+Score: 20.253164556962023
+
+Searched text:
+(KZ) ГЛАЗУРЬ ТІЛІМДЕРІ БАР "LOVITA" CLASSIC COOKIES" МАЙҚОСПА ПЕЧЕНЬЕСІ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 118
+Status: not found
+Score: 20.833333333333336
+
+Searched text:
+Құрамы:  қант, бидай ұны, өсімдік майы (сутектендірілмеген  пальма майы, толықтай сутектендірілген пальма дәнінің майы, сутектендірілмеген пальма дәнінің майы), бидай крахмалы, майдың құрамы төмен какао-ұнтақ 4%, жұмыртқа меланж, майы алынған құрғақ сүт, қопсытқыштар (аммоний гидрокарбонаты, натрий дигидропирофосфаты, натрий гидрокарбонаты), ас тұзы, эмульгаторлар лецитиндер (құрамында соя бар), хошиістендіргіш, қышқылдықты реттеуіш сүт қышқылы. Құрамында какаосы бар глазурь тілімдері -30%. Құрамында жержаңғақ, орман жаңғағы, бадам, күнжіт болуы мүмкін.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 119
+Status: not found
+Score: 9.523809523809524
+
+Searched text:
+*Классикалық печенье
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 120
+Status: not found
+Score: 19.64285714285714
+
+Searched text:
+(18±5)°С температура мен 75%-дан жоғары емес ауаның салыстырмалы ылғалдылығы жағдайында сақтау керек.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 121
+Status: not found
+Score: 9.090909090909093
+
+Searched text:
+ЛАТВІЙСЬКА РЕСПУБЛІКА
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 122
+Status: not found
+Score: 24.0
+
+Searched text:
+(LV) CEPUMI “LOVITA CLASSIC COOKIES” AR GLAZŪRAS GABALIŅIEM (30 %)
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 123
+Status: not found
+Score: 21.333333333333336
+
+Searched text:
+Sastāvdaļas: cukurs, kviešu milti, augu eļļas (palmu eļļa, pilnībā hidrogenēta palmu kodolu eļļa, palmu kodolu eļļa), kviešu ciete, kakao pulveris ar samazinātu tauku saturu 4 %, olu baltumu un dzeltenumu maisījums, vājpiena pulveris, irdinātāji: amonija hidrogēnkarbonāts, dinātrija difosfāts, nātrija bikarbonāts; sāls, emulgatori: lecitīni (satur soju), aromatizētājs, skābuma regulētājs: pienskābe.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 124
+Status: not found
+Score: 20.68965517241379
+
+Searched text:
+Produkts var saturēt zemesriekstus, lazdu riekstus, mandeles un sezama sēklas.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 125
+Status: not found
+Score: 29.694323144104807
+
+Searched text:
+Enerģētiskā un uzturvērtība 100 g: 2097 kJ/501 kcal; tauki – 25,1 g, tostarp piesātinātās taukskābes – 14,6 g; ogļhidrāti – 63,2 g, tostarp cukuri – 36,5 g; olbaltumvielas – 4,3 g; sāls – 0,63 g.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 126
+Status: not found
+Score: 23.529411764705888
+
+Searched text:
+Uzglabāt 18±5 °C temperatūrā, ja gaisa relatīvais mitrums nepārsniedz 75 %.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 127
+Status: not found
+Score: 0.0
+
+Searched text:
+ЛИТВА
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 128
+Status: not found
+Score: 20.512820512820518
+
+Searched text:
+(LT) SAUSAINIAI „LOVITA“ CLASSIC COOKIES SU GLAISTO GABALIUKAIS (30%).
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 129
+Status: not found
+Score: 19.18294849023091
+
+Searched text:
+Sudedamosios dalys: cukrus, kvietiniai miltai, augaliniai aliejai (alyvpalmių aliejus, visiškai hidrintas alyvpalmių branduolių aliejus, alyvpalmių branduolių aliejus), kviečių krakmolas, sumažinto riebumo kakavos milteliai 4%, kiaušinių baltymų ir trynių mišinys, nugriebto pieno milteliai, tešlos kildymo medžiagos (amonio rūgštusis karbonatas, dinatrio difosfatas, natrio bikarbonatas), druska, emulsikliai lecitinai (sudėtyje yra sojų), kvapioji medžiaga, rūgštingumą reguliuojanti medžiaga pieno rūgštis.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 130
+Status: not found
+Score: 21.95121951219512
+
+Searched text:
+Sudėtyje gali būti žemės riešutų, lazdyno riešutų, migdolų, sezamo sėklų.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 131
+Status: not found
+Score: 30.11583011583011
+
+Searched text:
+Maistingumo deklaracija 100 g produkto: energinė vertė 2097 kJ/501 kcal; riebalai – 25,1 g, iš kurių sočiųjų riebalų rūgščių – 14,6 g; angliavandeniai – 63,2 g, iš kurių cukrų – 36,5 g; baltymai – 4,3 g; druska – 0,63 g.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 132
+Status: not found
+Score: 25.806451612903224
+
+Searched text:
+Laikyti 18±5 °C temperatūroje, esant ne didesnei kaip 75 % oro santykinė drėgmei.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 133
+Status: not found
+Score: 0.0
+
+Searched text:
+ПОЛЬША
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 134
+Status: not found
+Score: 21.95121951219512
+
+Searched text:
+(PL) “LOVITA CLASSIC COOKIES”, Ciastka z kawałkami polewy kakaowej (30%).
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 135
+Status: not found
+Score: 21.65605095541401
+
+Searched text:
+Składniki: cukier, mąka pszenna, oleje roślinne (palmowy , z ziaren palmowych całkowicie utwardzony, z ziaren palmowych), skrobia pszenna, kakao w proszku o obniżonej zawartości tłuszczu 4%, jaja pasteryzowane w płynie, mleko w proszku odtłuszczone, substancje spulchniające: wodorowęglan amonu, difosforan disodowy, wodorowęglan sodu; sól, emulgator: lecytyny (zawiera soje); aromat, regulator kwasowości: kwas mlekowy.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 136
+Status: not found
+Score: 19.753086419753085
+
+Searched text:
+Może zawierać: orzeszki ziemne, orzechy laskowe, migdały, nasiona sezamu.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 137
+Status: not found
+Score: 26.315789473684216
+
+Searched text:
+Wartość odżywcza produktu w 100 g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 138
+Status: not found
+Score: 9.523809523809524
+
+Searched text:
+wartość energetyczna
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 139
+Status: not found
+Score: 30.000000000000004
+
+Searched text:
+2097 kJ /501 kcal
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 140
+Status: not found
+Score: 0.0
+
+Searched text:
+tłuszcz,
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 141
+Status: not found
+Score: 22.857142857142854
+
+Searched text:
+w tym kwasy tłuszczowe nasycone
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 142
+Status: not found
+Score: 28.57142857142857
+
+Searched text:
+25,1 g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 143
+Status: not found
+Score: 28.57142857142857
+
+Searched text:
+14,6 g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 144
+Status: not found
+Score: 0.0
+
+Searched text:
+węglowodany,
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 145
+Status: not found
+Score: 30.76923076923077
+
+Searched text:
+w tym cukry
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 146
+Status: not found
+Score: 28.57142857142857
+
+Searched text:
+63,2 g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 147
+Status: not found
+Score: 28.57142857142857
+
+Searched text:
+36,5 g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 148
+Status: not found
+Score: 0.0
+
+Searched text:
+białko
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 149
+Status: not found
+Score: 33.333333333333336
+
+Searched text:
+4,3 g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 150
+Status: not found
+Score: 0.0
+
+Searched text:
+sól
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 151
+Status: not found
+Score: 28.57142857142857
+
+Searched text:
+0,63 g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 152
+Status: not found
+Score: 25.0
+
+Searched text:
+Najlepiej spożyć przed:  […]
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 153
+Status: not found
+Score: 21.739130434782606
+
+Searched text:
+Przechowywać w suchym i chłodnym miejscu.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 154
+Status: not found
+Score: 30.000000000000004
+
+Searched text:
+masa netto [--] g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 155
+Status: not found
+Score: 23.529411764705888
+
+Searched text:
+Nr partii: [--]
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 156
+Status: not found
+Score: 24.29906542056075
+
+Searched text:
+Importer w Polsce: ROSHEN EUROPE Sp. z o.o., ul. Patriotów 195/C2/C5, 04-858 Warszawa, Polska.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 157
+Status: not found
+Score: 0.0
+
+Searched text:
+РУМЫНИЯ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 158
+Status: not found
+Score: 25.263157894736842
+
+Searched text:
+(RO) "LOVITA" CLASSIC COOKIES", BISCUIȚI CU BUCĂȚI DE GLAZURĂ DE CIOCOLATĂ (30%). Ingrediente: zahăr, făină de grâu, grăsimi vegetale (ulei de palmier nehidrogenat, ulei de miez de palmier complet hidrogenat, ulei de miez de palmier nehidrogenat), amidon de grâu, pudră de cacao cu conținut redus de grăsimi 4%, ou lichid pasteurizat, lapte praf degresat, agenți de creștere (carbonat acid de amoniu, difosfat disodic, bicarbonat de sodiu), sare, emulgatori lecitine (conțin soia), arome, regulator de aciditate acid lactic. Poate conține arahide, alune, migdale, semințe de susan.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 159
+Status: not found
+Score: 28.282828282828287
+
+Searched text:
+A se păstra la temperatura de (18±5)°С și umiditatea relativă a aerului de 75% maxim.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 160
+Status: not found
+Score: 0.0
+
+Searched text:
+СЛОВАКИЯ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 161
+Status: not found
+Score: 34.905660377358494
+
+Searched text:
+(SK) Sušienky s kúskami kakaovej polevy (30%). Zloženie: cukor, PŠENIČNÁ múka, rastlinné tuky (palmový, úplne hydrogenovaný palmojadrový, palmojadrový), PŠENIČNÝ škrob, kakaový prášok so zníženým množstvom tuku 4 %, VAJCE, sušené odstredené MLIEKO, kypriace látky (uhličitany amónne, fosforečnany sodné, uhličitany sodné), jedlá soľ, emulgátor: lecitín (obsahuje SÓJU), arómy, regulátor kyslosti: kyselina mliečna.                                                      Môže obsahovať arašidy, lieskové oriešky, mandle a sezam.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 162
+Status: not found
+Score: 0.0
+
+Searched text:
+ИСПАНИЯ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 163
+Status: not found
+Score: 22.910216718266252
+
+Searched text:
+(ES) GALLETAS CLÁSICAS "LOVITA", GALLETAS CON COBERTURA (30%). Ingredientes: azúcar, harina de trigo, grasa vegetal (aceite de palma no hidrogenado, aceite de palmiste totalmente hidrogenado, aceite de palmiste no hidrogenado), almidón de trigo, cacao desgrasado en polvo 4%, huevo líquido pasteurizado, leche desnatada en polvo, gasificantes (carbonato ácido de amonio, difosfato disódico, carbonato ácido de sodio), sal, emulgentes lecitinas (contienen soja), aroma, corrector de acidez ácido láctico. Puede contener cacahuetes, avellanas, almendras, semillas de sésamo.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 164
+Status: not found
+Score: 27.848101265822788
+
+Searched text:
+Conservar a (18±5)°С y humedad relativa del aire no superior al 75%.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 165
+Status: not found
+Score: 12.903225806451612
+
+Searched text:
+ОБЪЕДИНЕННЫЕ АРАБСКИЕ ЭМИРАТЫ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 166
+Status: not found
+Score: 21.68674698795181
+
+Searched text:
+(AE) "LOVITA" CLASSIC COOKIES", BISCUITS WITH COATING DROPS (30%) Attached
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 167
+Status: not found
+Score: 13.636363636363635
+
+Searched text:
+МАКЕДОНИЯ, ПРЕЖНЯЯ ЮГОСЛАВСКАЯ РЕСПУБЛИКА
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 168
+Status: not found
+Score: 23.076923076923073
+
+Searched text:
+(MK) "LOVITA" КЛАСИЧНИ БИСКВИТИ“, БИСКВИТИ СО КАПКИ ОД ЧОКОЛАДО (30%)
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 169
+Status: not found
+Score: 21.82468694096601
+
+Searched text:
+Состав: шеќер, пченично брашно, растителни масти (нехидрогенизирано палмино масло, целосно хидрогенизирано палмово јадро, нехидрогенизирано масло од палмово јадро), пченичен скроб, какао во прав со намалени масти 4%, пастеризирано течно јајце, обезмастено млеко во прав, подигање агенси (амониум хидроген карбонат, динатриум дифосфат, натриум хидроген карбонат), сол, емулгатори лецитини (содржат соја), ароми, регулатор на киселост млечна киселина. Може да содржи кикирики, лешници, бадеми, сусам.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 170
+Status: not found
+Score: 30.23255813953488
+
+Searched text:
+Да се чува на (18±5)°С и релативна влажност на воздухот не повеќе од 75%.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 171
+Status: not found
+Score: 14.814814814814813
+
+Searched text:
+СОЕДИНЕННЫЕ ШТАТЫ АМЕРИКИ
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 172
+Status: not found
+Score: 19.23076923076923
+
+Searched text:
+(US) "LOVITA" CLASSIC COOKIES", BISCUITS WITH COATING DROPS 61078ARTIFICIALLY FLAVORED VANILLA
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 173
+Status: not found
+Score: 21.108179419525065
+
+Searched text:
+Ingredients: sugar, wheat flour, vegetable oils (non-hydrogenated palm and palm kernel, fully hydrogenated palm kernel), wheat starch, fat-reduced cocoa powder, pasteurized liquid egg, skimmed milk powder, ammonium hydrogen carbonate, disodium diphosphate, sodium hydrogen carbonate, salt, soya lecithin, artificial flavoring, lactic acid.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 174
+Status: not found
+Score: 22.857142857142854
+
+Searched text:
+Contains wheat, eggs, milk, soy
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 175
+Status: not found
+Score: 19.999999999999996
+
+Searched text:
+May contain peanuts, hazelnuts, almonds, sesame seeds.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 176
+Status: not found
+Score: 35.29411764705882
+
+Searched text:
+Keep in a cool and dry place
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 177
+Status: not found
+Score: 9.090909090909093
+
+Searched text:
+РЕСПУБЛИКА УЗБЕКИСТАН
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 178
+Status: not found
+Score: 18.181818181818176
+
+Searched text:
+(UZ) "LOVITA" CLASSIC COOKIES", tomchi qoplamali biskvitlar.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 179
+Status: not found
+Score: 20.972644376899694
+
+Searched text:
+"LOVITA" CLASSIC COOKIES",  tomchi qoplamali biskvitlar. Tarkibi: shakar, bug'doy uni, o'simlik yog'i (vodorodlanmagan palma yog'i, to'liq gidrogenlangan palma yadrosi yog'i, vodorodlanmagan palma yadrosi yog'i), bug'doy kraxmal, kam yog'li kakao kukuni 4%, melanjli tuxum, yog'sizlangan sut kukuni, ko'taruvchi moddalar (ammiakli vodorod karbonat, natriy dihidropirofosfat, natriy vodorod karbonat), tuz, lesitin emulsifikatorlari (tarkibida soya), aromatizator, kislotalilik regulyatori sut kislotasi. Kakao bo'laklari - 30% yong'oq, mayin yong'oqlari, bodom,  kunjutni o'z ichiga oladi.
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 180
+Status: not found
+Score: 18.181818181818176
+
+Searched text:
+* Klassik biskvitlar
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 181
+Status: not found
+Score: 28.31858407079646
+
+Searched text:
+100 g/g mahsulot uchun ozuqaviy qiymati: energiya qiymati – 2097 kJ/kJ (501 kkal/kkal); yog'lar - 25,1 g / g; ulardan to'yingan yog'lar - 14,6 g/g; uglevodlar - 63,2 g / g; ulardan shakar - 36,5 g / g; oqsillar - 4,3 g / g; tuz - 0,63 g / g. (18±5)°C haroratda va nisbiy namligi 75% dan oshmaydigan joyda saqlang. O'zbekiston Respublikasida import qiluvchi Green Line Trading MChJ, Toshkent shahri, Yashnobod tumani, Temirchi-2, +99897 752 77 97,amal qilish muddati qutida ko'rsatilgan
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 182
+Status: not found
+Score: 0.0
+
+Searched text:
+Коментарій
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 183
+Status: not found
+Score: 17.777777777777782
+
+Searched text:
+KZ название латиницей "LOVITA" CLASSIC COOKIES"// Artificial flavouring: "Vanilla"
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 184
+Status: not found
+Score: 14.28571428571429
+
+Searched text:
+Energy (Ккал)
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 185
+Status: not found
+Score: 0.0
+
+Searched text:
+501
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 186
+Status: not found
+Score: 15.384615384615385
+
+Searched text:
+Energy (Кдж)
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 187
+Status: not found
+Score: 0.0
+
+Searched text:
+2097
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 188
+Status: not found
+Score: 0.0
+
+Searched text:
+Fat
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 189
+Status: not found
+Score: 0.0
+
+Searched text:
+25.1
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 190
+Status: not found
+Score: 22.22222222222222
+
+Searched text:
+Saturated fatty acids, g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 191
+Status: not found
+Score: 0.0
+
+Searched text:
+14.6
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 192
+Status: not found
+Score: 0.0
+
+Searched text:
+Carbohydrate
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 193
+Status: not found
+Score: 0.0
+
+Searched text:
+63.2
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 194
+Status: not found
+Score: 19.999999999999996
+
+Searched text:
+Sugars, g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 195
+Status: not found
+Score: 0.0
+
+Searched text:
+36.5
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 196
+Status: not found
+Score: 0.0
+
+Searched text:
+Protein
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 197
+Status: not found
+Score: 0.0
+
+Searched text:
+4.3
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 198
+Status: not found
+Score: 25.0
+
+Searched text:
+Salt, g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 199
+Status: not found
+Score: 0.0
+
+Searched text:
+0.63
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 200
+Status: not found
+Score: 26.086956521739136
+
+Searched text:
+Trans fatty acids, g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 201
+Status: not found
+Score: 0.0
+
+Searched text:
+0.3
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 202
+Status: not found
+Score: 12.5
+
+Searched text:
+Cholesterol, mg
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 203
+Status: not found
+Score: 0.0
+
+Searched text:
+11.9
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 204
+Status: not found
+Score: 22.22222222222222
+
+Searched text:
+Dietary fibre, g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 205
+Status: not found
+Score: 0.0
+
+Searched text:
+2.5
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 206
+Status: not found
+Score: 18.181818181818176
+
+Searched text:
+Sodium, mg
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 207
+Status: not found
+Score: 0.0
+
+Searched text:
+252
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 208
+Status: not found
+Score: 18.181818181818176
+
+Searched text:
+Alcohol (ethanol), g
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 209
+Status: not found
+Score: 0.0
+
+Searched text:
+0
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 210
+Status: not found
+Score: 38.095238095238095
+
+Searched text:
+Tfa in the fat, %
+
+Matched text (start):
+
+----------------------------------------
+
+Block ID: 211
+Status: not found
+Score: 0.0
+
+Searched text:
+1
+
+Matched text (start):
+
+----------------------------------------
+

@@ -148,7 +148,7 @@ if __name__ == "__main__":
     output_folder = ROOT_DIR / "assets" / "datasets" / "LabelDetect_PM" / "for-training"
     coco_annotation = input_folder / "instances_default.json"
 
-    split_dataset(input_folder, output_folder, coco_annotation)
+    #split_dataset(input_folder, output_folder, coco_annotation)
 
     # model = YOLO( ROOT_DIR / "assets" / "models" / "Yolo" / "yolov8s-cls.pt")
     
