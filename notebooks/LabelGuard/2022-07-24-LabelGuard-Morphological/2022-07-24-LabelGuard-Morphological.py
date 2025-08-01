@@ -37,6 +37,8 @@ gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                                cv2.THRESH_BINARY_INV, blockSize=31, C=15)
 
+cv2.imwrite(str(output_img_file), thresh)
+exit()
 # Перша ітерація
 blocks = detect_blocks(img, thresh)
 

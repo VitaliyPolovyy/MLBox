@@ -22,15 +22,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Copy only requirements first for better caching
-COPY mlbox/ ./mlbox/
-COPY deployments/ ./deployments/
-COPY assets/json-schemas/ ./assets/json-schemas/
-COPY deploy_ray.sh ./
 COPY requirements.txt ./
 
 # Install Python dependencies
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
+# Copy application files
+COPY mlbox/ ./mlbox/
+COPY deployments/ ./deployments/
+COPY assets/ ./assets/
+COPY setup.py ./
+
+# Install mlbox package in development mode
+RUN pip install -e .
 
 # Create and switch to non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
@@ -43,5 +47,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/peanuts/health || exit 1
 
-# Start the service
-CMD ["bash", "deploy_ray.sh"]
+# Start Ray head and deployment
+CMD ["bash", "-c", "ray start --head --dashboard-host=0.0.0.0 && python deployments/peanut_deployment.py && tail -f /dev/null"]
+

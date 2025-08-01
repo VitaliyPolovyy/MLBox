@@ -1,3 +1,7 @@
+from loguru import logger
+
+logger.info(">>> MODULE LOADED1")
+
 import json
 import sys
 import traceback
@@ -5,10 +9,10 @@ import time
 from io import BytesIO
 from typing import List
 from pathlib import Path
-
 import ray
 from jsonschema import ValidationError as JSONSchemaValidationError
 from jsonschema import validate
+
 
 from PIL import Image as PILImage
 from ray import serve
@@ -16,28 +20,29 @@ from starlette.requests import Request
 from mlbox.services.peanuts.datatype import PeanutInputJson
 from mlbox.services.peanuts import peanuts
 from mlbox.settings import ROOT_DIR
-from mlbox.utils.logger import get_logger
+from mlbox.utils.logger import get_logger, get_artifact_service
+import uuid
 
-# Initialize MLBox logger
-mlbox_logger = get_logger(ROOT_DIR)
-
+# Initialize logger and artifact service
+app_logger = get_logger(ROOT_DIR)
+artifact_service = get_artifact_service(ROOT_DIR)
 
 @serve.deployment
 class Peanuts:
+    SERVICE_NAME = "peanuts"
     def __init__(self):
-        print(">>> START")
         # Temporary directory for saving files during processing
-        self.tmp_dir = ROOT_DIR / "ASSETS" / "tmp"
+        self.tmp_dir = ROOT_DIR / "assets" / "tmp"
         self.tmp_dir.mkdir(parents=True, exist_ok=True)
-        print(">>> PATH OK:", self.tmp_dir)
+
         # Load the JSON schema for peanut requests
         request_json_schema_file = (
-            ROOT_DIR / "ASSETS" / "json-schemas" / "peanut-input.json"
+            ROOT_DIR / "assets" / "json-schemas" / "peanut-input.json"
         )
         
         with open(request_json_schema_file, "r", encoding="utf-8") as schema_file:
             self.peanut_request_json_schema = json.load(schema_file)
-        print(">>> SCHEMA LOADED")
+
 
     @staticmethod
     def create_response(status, message, error_trace=None) -> dict:
@@ -59,26 +64,30 @@ class Peanuts:
 
     @serve.batch(max_batch_size=5, batch_wait_timeout_s=0)
     async def batch_handler(self, requests: List[Request]) -> List[dict]:
-
+        app_logger.info(self.SERVICE_NAME, f"Batch processing started | batch_size={len(requests)}")
+        
         peanut_requests: List[peanuts.PeanutProcessingRequest] = []
         responses = [None] * len(requests)
         request_ids = [None] * len(requests)
         start_times = [None] * len(requests)
-
         requests_mapping = {}
 
         for idx, request in enumerate(requests):
+            # Log each request BEFORE processing
+            client_ip = request.client.host if request.client else "unknown"
+            app_logger.info(self.SERVICE_NAME, f"Processing request {idx+1}/{len(requests)} | client_ip={client_ip}")
+            
             start_time = time.time()
-            request_id = None
+            request_id = str(uuid.uuid4())
             
             try:
-                print(f"--- Request {idx}: start parsing form ---")
                 form = await request.form()
-                print(f"--- Request {idx}: form keys = {list(form.keys())} ---")
 
                 image_file = form["image"]
+                if image_file is None:
+                    raise Exception(f"IMAGE MISSING in form | request_id={request_id}")
+
                 image_data = await image_file.read()
-                print(f"--- Request {idx}: image filename = {image_file.filename}, size = {len(image_data)} bytes ---")
                 
                 # Save input image
                 image = PILImage.open(BytesIO(image_data))
@@ -91,29 +100,18 @@ class Peanuts:
                 validate(instance=json_body, schema=self.peanut_request_json_schema)
                 peanut_input_json = PeanutInputJson.from_json(json.dumps(json_body)) # pylint: disable=no-member
 
-                # Log request
-                request_data = {
-                    "client_ip": request.client.host if request.client else "unknown",
-                    "file": image_file.filename,
-                    "service_code": json_body.get("service_code"),
-                    "alias": peanut_input_json.alias,
-                    "key": peanut_input_json.key,
-                    "response_method": peanut_input_json.response_method,
-                    "response_endpoint": peanut_input_json.response_endpoint
-                }
+                # Log request to app.log
+                app_logger.info(self.SERVICE_NAME, f"Request received | {peanut_input_json.dict()} ")
                 
-                request_id = mlbox_logger.log_request("peanuts", request_data)
+                # Save peanut_input_json as artifact
+                artifact_service.save_artifact("peanuts", f"input_{request_id}.json", peanut_input_json.__dict__)
+                
+                
                 request_ids[idx] = request_id
                 start_times[idx] = start_time
                 
                 # Save input image as artifact
-                mlbox_logger.save_artifact(
-                    service="peanuts",
-                    artifact_type="images",
-                    file_path=temp_image_path,
-                    request_id=request_id,
-                    metadata={"original_filename": image_file.filename}
-                )
+                artifact_service.save_artifact(self.SERVICE_NAME, f"input_{request_id}_{image_file.filename}", image)
 
                 peanut_requests.append(
                     peanuts.PeanutProcessingRequest(
@@ -137,21 +135,16 @@ class Peanuts:
                 responses[idx] = self.create_response(
                     status="error", message=error_msg
                 )
-                if request_id:
-                    mlbox_logger.log_error("peanuts", request_id, e, {"request_idx": idx})
+                app_logger.error(self.SERVICE_NAME, f"request_id={request_id} | error={error_msg}")
             except Exception as e:
-                error_msg = f"Request parsing error: {str(e)}"
-                responses[idx] = self.create_response(
-                    status="error", message=error_msg
-                )
-                if request_id:
-                    mlbox_logger.log_error("peanuts", request_id, e, {"request_idx": idx, "stage": "parsing"})
+                responses[idx] = self.create_response(status="error", message=str(e))
+                app_logger.error("peanuts", f"request_id={request_id} | error={str(e)}")
 
         if peanut_requests:
             try:
                 # processing_results = self.peanuts_process_requests(peanut_requests)
                 processing_results = peanuts.process_requests(peanut_requests)
-                print(f"!!! 2 len(processing_results) = {len(processing_results)}")
+                app_logger.info("peanuts", f"Processing completed | results_count={len(processing_results)}")
                 
                 for idx, processing_result in enumerate(processing_results):
                     original_idx = requests_mapping[idx]
@@ -173,19 +166,20 @@ class Peanuts:
                     if hasattr(processing_result, 'excel_filename') and processing_result.excel_filename:
                         excel_path = Path(processing_result.excel_filename)
                         if excel_path.exists():
-                            artifact_path = mlbox_logger.save_artifact(
-                                service="peanuts",
-                                artifact_type="results",
-                                file_path=excel_path,
-                                request_id=request_id,
-                                metadata={"result_type": "excel_report"}
-                            )
+                            # Read the Excel file data and save as artifact
+                            with open(excel_path, 'rb') as f:
+                                excel_data = f.read()
+                            artifact_path = artifact_service.save_artifact("peanuts", f"result_{request_id}.xlsx", excel_data)
                             # Update response data with artifact path
                             if artifact_path:
                                 response_data["output_xlsx_path"] = artifact_path
                     
-                    # Log response
-                    mlbox_logger.log_response("peanuts", request_id, response_data)
+                    # Save response data as artifact
+                    artifact_service.save_artifact("peanuts", f"response_{request_id}.json", response_data)
+                    
+                    # Log response to app.log
+                    status = response_data.get("status", "unknown")
+                    app_logger.info(self.SERVICE_NAME, f"Response sent | request_id={request_id} | status={status} | time={processing_time:.2f}s")
                     
                     responses[original_idx] = self.create_response(
                         status=processing_result.status,
@@ -195,20 +189,18 @@ class Peanuts:
             except Exception as e:
                 error_msg = f"Processing error: {str(e)}"
                 error_trace = traceback.format_exc()
+                app_logger.error(self.SERVICE_NAME, f"error={str(e)}")
                 
                 # Log error for all requests that failed
                 for idx, request_id in enumerate(request_ids):
                     if request_id:
-                        mlbox_logger.log_error("peanuts", request_id, e, {
-                            "request_idx": idx,
-                            "stage": "processing",
-                            "error_trace": error_trace
-                        })
+                        app_logger.error("peanuts", f"Request failed | request_id={request_id} | error={str(e)}")
                 
                 responses[0] = self.create_response(
                     status="error", message=error_msg, error_trace=error_trace
                 )
 
+        app_logger.info("general", f"Batch processing completed | batch_size={len(requests)}")
         return responses
 
 # peanut_deployment.py
@@ -219,5 +211,5 @@ PeanutsDeployment = Peanuts.bind()
 if __name__ == "__main__":
     ray.init()
     serve.start(http_options={"host": "0.0.0.0", "port": 8000})
-    serve.run(PeanutsDeployment)
+    serve.run(PeanutsDeployment, route_prefix="/peanuts/process_image")
     

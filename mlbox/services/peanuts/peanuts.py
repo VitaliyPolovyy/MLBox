@@ -17,11 +17,16 @@ from PIL import Image as PILImage
 from mlbox.models.peanuts.cls.yolo_cls_model import YOLOPeanutsClassifier
 from mlbox.models.peanuts.detection.yolo_detector_model import YOLOPeanutsDetector
 from mlbox.services.peanuts.datatype import Ellipse, Status, PeanutProcessingRequest, PeanutProcessingResult, OnePeanutProcessingResult, BaseResponseJson, PeanutDataResponseJson
-from mlbox.settings import DEBUG_MODE, ROOT_DIR
+from mlbox.settings import ROOT_DIR, LOG_LEVEL
 from mlbox.utils.cvtools import preprocess_images_with_white_rectangle
+from mlbox.utils.logger import get_logger, get_artifact_service
 
 CURRENT_DIR = Path(__file__).parent
 SERVICE_NAME = "Peanuts"
+
+# Initialize logger and artifact service
+app_logger = get_logger(ROOT_DIR)
+artifact_service = get_artifact_service(ROOT_DIR)
 
 
 load_dotenv(ROOT_DIR / ".env")
@@ -34,7 +39,6 @@ HF_PEANUT_SEG_REPO_ID = os.getenv("HF_PEANUT_SEG_REPO_ID")
 HF_PEANUT_SEG_FILE = os.getenv("HF_PEANUT_SEG_FILE")
 HF_PEANUT_CLS_REPO_ID = os.getenv("HF_PEANUT_CLS_REPO_ID")
 HF_PEANUT_CLS_FILE = os.getenv("HF_PEANUT_CLS_FILE")
-DEBUG_MODE = os.getenv("DEBUG_MODE")
 ERP_ENDPOINT = (
     "https://ite.roshen.com:4433/WS/api/_MLBOX_HANDLE_RESPONSE?call_in_async_mode=false"
 )
@@ -91,6 +95,7 @@ def process_peanuts_images(
     requests: List[PeanutProcessingRequest],
 ) -> List[PeanutProcessingResult]:
 
+    app_logger.info(SERVICE_NAME, f"Processing peanuts images: {len(requests)}")
     peanut_processing_results: List[PeanutProcessingResult] = []
 
     input_images, input_images_filename = zip(
@@ -98,11 +103,25 @@ def process_peanuts_images(
     )
 
     # prepare images for processing
-    preprocessed_results = preprocess_images_with_white_rectangle(input_images= input_images, target_width = 2000)
+    try:
+        preprocessed_results = preprocess_images_with_white_rectangle(input_images= input_images, target_width = 2000)
+        preprocessed_images, pixels_per_mm_values = zip(*preprocessed_results)
+    except ValueError as e:
+        # If A4 paper detection fails, use simple resizing instead
+        print(f"A4 paper detection failed: {e}. Using simple resizing.")
+        preprocessed_images = []
+        pixels_per_mm_values = []
+        for image in input_images:
+            # Simple resize to target width while maintaining aspect ratio
+            height, width = image.shape[:2]
+            aspect_ratio = width / height
+            new_height = int(2000 / aspect_ratio)
+            resized_image = cv2.resize(image, (2000, new_height))
+            preprocessed_images.append(resized_image)
+            # Use a default pixels_per_mm value (this is approximate)
+            pixels_per_mm_values.append(5.0)  # Default value, may need adjustment
 
-    preprocessed_images, pixels_per_mm_values = zip(*preprocessed_results)
-
-    if DEBUG_MODE:
+    if LOG_LEVEL == "DEBUG":
         save_images_with_annotations(
             preprocessed_images, step_name="preprocessing", output_folder=result_folder
         )
@@ -124,7 +143,7 @@ def process_peanuts_images(
         preprocessed_images, verbose=True, imgsz=1024, conf=0.6
     )
 
-    if DEBUG_MODE:
+    if LOG_LEVEL == "DEBUG":
         bounding_boxes = [detection.xyxy for detection in sv_detections]
         masks = [detection.mask for detection in sv_detections]
         save_images_with_annotations(
@@ -160,9 +179,13 @@ def process_peanuts_images(
             one_peanut_image[mask[y1:y2, x1:x2] is False] = 255
 
             # Save the cropped peanut image
-            pil_image = PILImage.fromarray(one_peanut_image)
-            file_name = result_folder / f"{index}.jpg"
-            pil_image.save(file_name, format="JPEG")
+            if LOG_LEVEL == "DEBUG":
+                pil_image = PILImage.fromarray(one_peanut_image)
+                artifact_service.save_artifact(
+                    service=SERVICE_NAME,
+                    file_name=f"{index}.jpg",
+                    data=pil_image
+                )
 
             one_peanut_images.append(one_peanut_image)
 
@@ -206,13 +229,16 @@ def process_peanuts_images(
             )
         )
 
+        # Ensure result folder exists
+        result_folder.mkdir(parents=True, exist_ok=True)
+        
         for result in peanut_processing_results:
             result.result_image.save(
                 result_folder / f"result_{result.original_image_filename}",
                 format="JPEG",
             )
 
-    if DEBUG_MODE:
+    if LOG_LEVEL == "DEBUG":
         classes: List[List[str]] = []
         bounding_boxes: List[List[Tuple[int, int, int, int]]] = []
         masks: List[List[np.ndarray]] = []
@@ -252,6 +278,9 @@ def prepare_excel(peanut_processing_result: PeanutProcessingResult) -> Path:
     Returns:
         Path: The path to the generated Excel file.
     """
+    # Ensure result folder exists
+    result_folder.mkdir(parents=True, exist_ok=True)
+    
     # Define output file path
     excel_file = (
         result_folder
@@ -468,7 +497,7 @@ def save_images_with_annotations(
                     cv_image, center, axes, angle, 0, 360, (255, 0, 0), 2
                 )  # Blue color with thickness 2
 
-        if contours is not None and len(contours) > i and False:
+        if contours is not None and len(contours) > i and False and False:
             for contour in contours[i]:
                 cv2.drawContours(
                     cv_image, [contour], -1, (0, 0, 255), 2
@@ -477,8 +506,12 @@ def save_images_with_annotations(
         # Convert NumPy array back to PIL image
         pil_image = PILImage.fromarray(cv_image)
 
-        file_name = output_folder / f"{step_name}_{i}.jpg"
-        pil_image.save(file_name, format="JPEG")
+        #pil_image.save(file_name, format="JPEG")
+        artifact_service.save_artifact(
+            service=SERVICE_NAME,
+            file_name=f"{step_name}_{i}.jpg",
+            data=pil_image
+        )
 
 
 def preprocessing_images_for_dataset(input_folder: Path, output_folder: Path) -> None:
@@ -550,14 +583,15 @@ def test_process_requests(input_folder: Path, output_folder: Path):
 
 if __name__ == "__main__":
     
-    output_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/preprocessed")
-    input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/Experiments-photo-lab/2025-02-19-phones")
+    #output_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/preprocessed")
+    #input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/Experiments-photo-lab/2025-02-19-phones")
     #preprocessing_images_for_dataset(input_folder, output_folder)
 
 
 
 
-    output_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/Experiments-photo-lab/2025-02-19-webcam-brio-705/output")
-    input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/Experiments-photo-lab/2025-02-19-webcam-brio-705-brihgt")
+    input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/tests")
+    output_folder = input_folder / "output"
+    
     
     test_process_requests(input_folder, output_folder)

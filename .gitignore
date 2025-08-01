@@ -93,6 +93,10 @@ coverage.xml
 # Jupyter Notebook
 .ipynb_checkpoints
 
+# docker
+docker/
+
+
 # mypy
 .mypy_cache/
 .dmypy.json

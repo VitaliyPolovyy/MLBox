@@ -22,7 +22,7 @@ import numpy as np
 import pycocotools.mask as coco_mask
 from PIL import Image as PILImage
 
-from mlbox.settings import DEBUG_MODE, ROOT_DIR
+from mlbox.settings import ROOT_DIR
 
 # Type aliases
 Point = Tuple[int, int]
@@ -168,11 +168,6 @@ def combine_coco_annotation_files(coco_files_directory: str) -> str:
                     current_annotation_id += 1
 
     return combined_coco
-
-
-if __name__ == "__main__":
-    # Module can be run directly for testing
-    pass
 
 
 def detect_white_rectangles(
@@ -480,3 +475,29 @@ def preprocess_images_with_white_rectangle(
         processed_data.append((processed_image, pixels_per_mm))
 
     return processed_data
+
+
+if __name__ == "__main__":
+    
+    input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/tests")
+    specific_file = "POCO_5200_10_WHITE.jpg"
+    image_path = input_folder / specific_file
+
+    # Load the image
+    np_image = cv2.imread(str(image_path))
+    
+    # Process the single image using the preprocessing function
+    processed_data = preprocess_images_with_white_rectangle([np_image])
+    
+    # Extract the processed image and pixels_per_mm
+    processed_image, pixels_per_mm = processed_data[0]
+    
+    print(f"Image: {image_path.name}, pixels_per_mm: {pixels_per_mm}")
+    print(f"Original image shape: {np_image.shape}")
+    print(f"Processed image shape: {processed_image.shape}")
+    
+    # Optionally save the processed image
+    output_path = input_folder / f"processed_{specific_file}"
+    cv2.imwrite(str(output_path), processed_image)
+    print(f"Processed image saved to: {output_path}")
+
