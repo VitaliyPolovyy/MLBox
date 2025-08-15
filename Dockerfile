@@ -1,52 +1,42 @@
+# -------- Builder: compile deps to wheels --------
+FROM python:3.11-slim AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /wheels
+COPY requirements.txt .
+RUN pip wheel --no-cache-dir -r requirements.txt
+
+# -------- Runtime: slim final image --------
 FROM python:3.11-slim
-
-# Environment settings
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
-
-# Install system dependencies
+ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    libgomp1 \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    curl libgl1 libgl1-mesa-dri libglib2.0-0 libxext6 libxrender1 libgomp1 \
+ && rm -rf /var/lib/apt/lists/*
 
-# Create app directory
 WORKDIR /app
 
-# Copy only requirements first for better caching
-COPY requirements.txt ./
+# Install prebuilt wheels from builder
+COPY --from=builder /wheels /wheels
+RUN pip install --no-cache-dir --no-index --find-links=/wheels -r /wheels/requirements.txt \
+ && rm -rf /wheels
 
-# Install Python dependencies
-RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Copy application files
-COPY mlbox/ ./mlbox/
-COPY deployments/ ./deployments/
-COPY assets/ ./assets/
-COPY setup.py ./
+# App code (avoid recursive chown layer)
+RUN useradd -m -u 1000 appuser
 
-# Install mlbox package in development mode
+WORKDIR /app
+WORKDIR /app
+COPY --chown=1000:1000 mlbox/ ./mlbox/
+COPY --chown=1000:1000 deployments/ ./deployments/
+COPY --chown=1000:1000 assets/ ./assets/
+COPY --chown=1000:1000 setup.py ./
+
 RUN pip install -e .
-
-# Create and switch to non-root user
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Expose service port
 EXPOSE 8000
-
-# Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/peanuts/health || exit 1
+  CMD curl -f http://localhost:8000/peanuts/health || exit 1
 
-# Start Ray head and deployment
-CMD ["bash", "-c", "ray start --head --dashboard-host=0.0.0.0 && python deployments/peanut_deployment.py && tail -f /dev/null"]
-
+# Start Ray then your app; 'exec' forwards signals to Python
+CMD ["bash","-lc","ray start --head --dashboard-host=0.0.0.0 && python deployments/peanut_deployment.py && tail -f /dev/null"]

@@ -1,11 +1,8 @@
-import json
-import uuid
-from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional
-import traceback
+from typing import Any
+from functools import lru_cache
 from loguru import logger
-from mlbox.settings import LOG_LEVEL, ROOT_DIR
+from mlbox.settings import LOG_LEVEL
 
 class Logger:
     """Simple logger for all application events with structured format"""
@@ -25,15 +22,42 @@ class Logger:
         # Remove default stderr handler
         logger.remove()
         
+        # Ensure the log file path is properly handled
+        log_file_path = self.logs_dir / "app.log"
+        
+        # Create an empty log file if it doesn't exist
+        try:
+            log_file_path.touch(exist_ok=True)
+        except Exception as e:
+            print(f"Warning: Could not create log file {log_file_path}: {e}")
+            # Fallback to console-only logging
+            logger.add(
+                lambda msg: print(msg, end=""),
+                level=LOG_LEVEL,
+                format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>"
+            )
+            return
+        
         # Add app.log handler with LOG_LEVEL from settings
-        logger.add(
-            self.logs_dir / "app.log",
-            level=LOG_LEVEL,
-            format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {message}",
-            rotation="10 MB",
-            retention="30 days",
-            compression="zip"
-        )
+        try:
+            logger.add(
+                str(log_file_path),  # Convert to string to avoid path issues
+                level=LOG_LEVEL,
+                format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {message}",
+                rotation="10 MB",
+                retention="30 days",
+                compression="zip",
+                enqueue=True
+            )
+        except Exception as e:
+            print(f"Warning: Could not add file handler for {log_file_path}: {e}")
+            # Fallback to console-only logging
+            logger.add(
+                lambda msg: print(msg, end=""),
+                level=LOG_LEVEL,
+                format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>"
+            )
+            return
         
         # Add console handler for development
         if LOG_LEVEL in ['DEBUG', 'INFO']:
@@ -44,24 +68,25 @@ class Logger:
             )
     
     def debug(self, service: str, message: str):
-        """Log debug message with structured format"""
         formatted_message = f"{service} | {message}"
         logger.debug(formatted_message)
     
     def info(self, service: str, message: str):
-        """Log info message with structured format"""
         formatted_message = f"{service} | {message}"
         logger.info(formatted_message)
     
     def warning(self, service: str, message: str):
-        """Log warning message with structured format"""
         formatted_message = f"{service} | {message}"
         logger.warning(formatted_message)
     
     def error(self, service: str, message: str):
-        """Log error message with structured format"""
         formatted_message = f"{service} | {message}"
         logger.error(formatted_message)
+    
+    @property
+    def level(self) -> str:
+        """Get the current log level"""
+        return LOG_LEVEL
 
 class ArtifactService:
     """Simple artifact storage service"""
@@ -112,20 +137,11 @@ class ArtifactService:
             logger.error(f"Failed to save artifact {service}/{file_name}: {e}")
             return None
 
-# Global instances
-_logger = None
-_artifact_service = None
-
+@lru_cache(maxsize=None)
 def get_logger(base_dir: Path) -> Logger:
-    """Get logger instance"""
-    global _logger
-    if _logger is None:
-        _logger = Logger(base_dir)
-    return _logger
+    logger.remove()
+    return Logger(base_dir)
 
+@lru_cache(maxsize=None)
 def get_artifact_service(base_dir: Path) -> ArtifactService:
-    """Get artifact service instance"""
-    global _artifact_service
-    if _artifact_service is None:
-        _artifact_service = ArtifactService(base_dir)
-    return _artifact_service 
+    return ArtifactService(base_dir)

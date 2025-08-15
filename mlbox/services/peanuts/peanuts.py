@@ -23,15 +23,11 @@ from mlbox.utils.logger import get_logger, get_artifact_service
 
 CURRENT_DIR = Path(__file__).parent
 SERVICE_NAME = "Peanuts"
-
-# Initialize logger and artifact service
 app_logger = get_logger(ROOT_DIR)
 artifact_service = get_artifact_service(ROOT_DIR)
 
-
-load_dotenv(ROOT_DIR / ".env")
+# Load environment variables from the peanuts service directory
 load_dotenv(CURRENT_DIR / ".env")
-# constants.py
 
 #os.environ["CURL_CA_BUNDLE"] = ""
 HF_TOKEN = os.getenv("HF_TOKEN")
@@ -43,9 +39,6 @@ ERP_ENDPOINT = (
     "https://ite.roshen.com:4433/WS/api/_MLBOX_HANDLE_RESPONSE?call_in_async_mode=false"
 )
 
-
-# Configure loguru
-logger.remove()
 
 
 input_folder = ROOT_DIR / "tmp" / CURRENT_DIR.name / "input"
@@ -121,10 +114,9 @@ def process_peanuts_images(
             # Use a default pixels_per_mm value (this is approximate)
             pixels_per_mm_values.append(5.0)  # Default value, may need adjustment
 
-    if LOG_LEVEL == "DEBUG":
+    if app_logger.level == "DEBUG":
         save_images_with_annotations(
-            preprocessed_images, step_name="preprocessing", output_folder=result_folder
-        )
+            preprocessed_images, step_name="preprocessing", output_folder=result_folder )
 
     # load weights file and detect peanuts on the images
     cls_model_path = hf_hub_download(
@@ -507,11 +499,7 @@ def save_images_with_annotations(
         pil_image = PILImage.fromarray(cv_image)
 
         #pil_image.save(file_name, format="JPEG")
-        artifact_service.save_artifact(
-            service=SERVICE_NAME,
-            file_name=f"{step_name}_{i}.jpg",
-            data=pil_image
-        )
+        #artifact_service.save_artifact(service=SERVICE_NAME,file_name=f"{step_name}_{i}.jpg",data=pil_image)
 
 
 def preprocessing_images_for_dataset(input_folder: Path, output_folder: Path) -> None:

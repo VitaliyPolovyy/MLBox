@@ -1,0 +1,1 @@
+curl.exe -X POST -F "image=@C:\temp\D21010101000001__14972__V223-011__0003.jpg" -F "json={\"alias\": \"DMS\", \"key\": \"9127673 1\", \"response_method\": \"HTTP_POST_REQUEST\", \"response_endpoint\": \"https://ite.roshen.com:4433/WS/api/_MLBOX_HANDLE_RESPONSE?call_in_async_mode=false\"}" "http://172.29.46.134:8001/peanuts/process_image"

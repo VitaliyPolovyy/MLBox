@@ -1,11 +1,9 @@
 from loguru import logger
-
-logger.info(">>> MODULE LOADED1")
-
 import json
 import sys
 import traceback
 import time
+import asyncio
 from io import BytesIO
 from typing import List
 from pathlib import Path
@@ -23,11 +21,17 @@ from mlbox.settings import ROOT_DIR
 from mlbox.utils.logger import get_logger, get_artifact_service
 import uuid
 
-# Initialize logger and artifact service
 app_logger = get_logger(ROOT_DIR)
 artifact_service = get_artifact_service(ROOT_DIR)
 
-@serve.deployment
+# CPU batch on Ray
+@ray.remote(num_cpus=1)
+def _process_batch(peanut_requests):
+    results = peanuts.process_requests(peanut_requests)
+
+    return results
+
+@serve.deployment(num_replicas=2, max_ongoing_requests=64)
 class Peanuts:
     SERVICE_NAME = "peanuts"
     def __init__(self):
@@ -43,26 +47,24 @@ class Peanuts:
         with open(request_json_schema_file, "r", encoding="utf-8") as schema_file:
             self.peanut_request_json_schema = json.load(schema_file)
 
+        app_logger.info(self.SERVICE_NAME, f"Peanuts deployment initialized. LOG_LEVEL={app_logger.level}")
 
     @staticmethod
     def create_response(status, message, error_trace=None) -> dict:
         response_data = {
             "status": status,
-            "message": message + (f"\n{error_trace}" if error_trace else message),
+            "message": message,
         }
+        
+        if error_trace:
+            response_data["stack"] = error_trace
 
         return response_data
 
     async def __call__(self, request: Request):
         return await self.batch_handler(request)
 
-    # @ray.remote
-    def peanuts_process_requests(
-        self, peanut_requests
-    ) -> List[peanuts.PeanutProcessingResult]:
-        return peanuts.process_requests(peanut_requests)
-
-    @serve.batch(max_batch_size=5, batch_wait_timeout_s=0)
+    @serve.batch(max_batch_size=8, batch_wait_timeout_s=0.05)
     async def batch_handler(self, requests: List[Request]) -> List[dict]:
         app_logger.info(self.SERVICE_NAME, f"Batch processing started | batch_size={len(requests)}")
         
@@ -101,10 +103,10 @@ class Peanuts:
                 peanut_input_json = PeanutInputJson.from_json(json.dumps(json_body)) # pylint: disable=no-member
 
                 # Log request to app.log
-                app_logger.info(self.SERVICE_NAME, f"Request received | {peanut_input_json.dict()} ")
+                app_logger.info(self.SERVICE_NAME, f"Request received | {peanut_input_json.to_dict()} ")
                 
                 # Save peanut_input_json as artifact
-                artifact_service.save_artifact("peanuts", f"input_{request_id}.json", peanut_input_json.__dict__)
+                artifact_service.save_artifact("peanuts", f"input_{request_id}.json", peanut_input_json.to_dict())
                 
                 
                 request_ids[idx] = request_id
@@ -126,10 +128,6 @@ class Peanuts:
 
                 requests_mapping[len(peanut_requests) - 1] = idx
 
-                responses[idx] = self.create_response(
-                    status="received", message="Your request is being processed"
-                )
-
             except JSONSchemaValidationError as e:
                 error_msg = f"JSON schema validation error: {str(e)}"
                 responses[idx] = self.create_response(
@@ -142,8 +140,9 @@ class Peanuts:
 
         if peanut_requests:
             try:
-                # processing_results = self.peanuts_process_requests(peanut_requests)
-                processing_results = peanuts.process_requests(peanut_requests)
+                # Move CPU batch to Ray task; await its ObjectRef (no ray.get in async)
+                processing_results_ref = _process_batch.remote(peanut_requests)
+                processing_results = await processing_results_ref
                 app_logger.info("peanuts", f"Processing completed | results_count={len(processing_results)}")
                 
                 for idx, processing_result in enumerate(processing_results):
@@ -191,14 +190,13 @@ class Peanuts:
                 error_trace = traceback.format_exc()
                 app_logger.error(self.SERVICE_NAME, f"error={str(e)}")
                 
-                # Log error for all requests that failed
+                # Proper error fan-out: fill all pending responses on failure
                 for idx, request_id in enumerate(request_ids):
-                    if request_id:
+                    if request_id and responses[idx] is None:
                         app_logger.error("peanuts", f"Request failed | request_id={request_id} | error={str(e)}")
-                
-                responses[0] = self.create_response(
-                    status="error", message=error_msg, error_trace=error_trace
-                )
+                        responses[idx] = self.create_response(
+                            status="error", message=error_msg, error_trace=error_trace
+                        )
 
         app_logger.info("general", f"Batch processing completed | batch_size={len(requests)}")
         return responses
@@ -209,7 +207,17 @@ PeanutsDeployment = Peanuts.bind()
 
 
 if __name__ == "__main__":
-    ray.init()
-    serve.start(http_options={"host": "0.0.0.0", "port": 8000})
-    serve.run(PeanutsDeployment, route_prefix="/peanuts/process_image")
+    # Connect to the running Ray head
+    ray.init(address="auto")   # instead of ray.init()
+
+    try:
+        serve.shutdown()
+        print("Shutdown existing Serve deployments")
+    except Exception as e:
+        print(f"No existing deployments to shutdown: {e}")
     
+    serve.start(http_options={"host": "0.0.0.0", "port": 8000})
+    print("Started Ray Serve on http://0.0.0.0:8000")
+    
+    serve.run(PeanutsDeployment, route_prefix="/peanuts/process_image")
+    print("Peanuts deployment is running at /peanuts/process_image")
