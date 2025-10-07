@@ -1,0 +1,39 @@
+curl.exe -X POST -F "image=@C:\temp\D21010101000001__14972__V223-011__0003.jpg" -F 'json={\"service_code\": \"1\", \"alias\": \"DMS\", \"key\": \"   9127673     1\", \"response_method\": \"HTTP_POST_REQUEST\", \"response_endpoint\": \"https://ite.roshen.com:4433/WS/api/_MLBOX_HANDLE_RESPONSE?call_in_async_mode=false\"}'  http://10.11.192.143:8000/peanuts/process_image
+
+curl.exe -X POST -F "image=@C:\temp\D21010101000001__14972__V223-011__0003.jpg" -F 'json={\"service_code\": \"1\", \"alias\": \"DMS\", \"key\": \"   9127673     1\", \"response_method\": \"HTTP_POST_REQUEST\", \"response_endpoint\": \"https://ite.roshen.com:4433/WS/api/_MLBOX_HANDLE_RESPONSE?call_in_async_mode=false\"}'  http://10.11.192.143:8000/peanuts/process_image
+
+
+
+curl.exe -X POST -F "image=@C:\temp\D21010101000001__14972__V223-011__0003.jpg" -F 'json={\"service_code\": \"1\", \"alias\": \"DMS\", \"key\": \"   9127673     1\", \"response_method\": \"HTTP_POST_REQUEST\", \"response_endpoint\": \"https://ite.roshen.com:4433/WS/api/_MLBOX_HANDLE_RESPONSE?call_in_async_mode=false\"}'  http://172.29.46.134:8000/peanuts/process_image
+
+
+
+
+
+
+
+
+
+
+# redirect port to wsl
+netsh interface portproxy delete v4tov4 listenport=8000 listenaddress=0.0.0.0
+netsh interface portproxy add v4tov4 listenport=8000 listenaddress=0.0.0.0 connectport=8000 connectaddress=172.17.19.18
+netsh interface portproxy show all
+
+
+# for installing yolo at vast ai
+sudo apt-get update
+sudo apt-get install -y libgl1
+pip install ultralytics
+
+
+
+
+netsh interface portproxy show all
+netsh interface portproxy delete v4tov4 listenport=8000 listenaddress=0.0.0.0
+netsh interface portproxy add v4tov4 listenport=8000 listenaddress=0.0.0.0 connectport=8000 connectaddress=172.24.109.152
+
+
+
+
+curl.exe -X POST -F "image=@C:\temp\2025_01_24\1_0001.jpg" -F 'json={\"service_code\": \"1\", \"alias\": \"DMS\", \"key\": \"   9127673     1\", \"response_method\": \"HTTP_POST_REQUEST\", \"response_endpoint\": \"https://ite.roshen.com:4433/WS/api/_MLBOX_HANDLE_RESPONSE?call_in_async_mode=false\"}'  http://10.11.192.143:8000/peanuts/process_image

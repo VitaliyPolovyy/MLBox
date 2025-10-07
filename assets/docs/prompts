@@ -1,0 +1,59 @@
+================================================================
+Hi I am developer of ML project.
+I am beginner in ML. I will provide u with my Project and then ask some questions.
+After you read overview, you just should ask me what I want to ask.
+Don't summarize etc, just ask me.
+Your answern should be concise and briefe.
+You should ask me questions one by one if you want to clarify questions.
+
+"""
+Project Overview
+
+
+Project Name: MLBox
+Purpose: MLBox is a Python-based machine learning project designed to implement and manage various ML services for my company. The project aims to solve specific business needs by creating tailored ML services that can process and analyze data, starting with a computer vision service. MLBox will evolve to accommodate dozens of distinct services in the future.
+
+Key Tools and Environment:
+- VS Code with WSL for development
+- Poetry and pyenv for dependency and environment management
+- Ray Serve for deploying, batch processing, and scaling ML services
+- Hugging Face Hub for storing and managing model weights
+- Git for version control
+
+First Service: Computer Vision Service for Peanut Measurement
+
+The initial service in MLBox processes images containing approximately 100g of peanuts on A4 paper. It generates a segmentation mask for each peanut and creates an Excel file that details various measurements of each peanut, supporting quality control and measurement tracking.
+
+Project Folder Structure
+
+Vitaliy’s mentor recommended the following structure, which helps organize assets, services, and model files:
+MLBox
+├── assets       # Configs, documentation, test files
+│   ├── docs
+│   ├── configs
+│   ├── models
+│   └── DataSet
+├── mlbox               # Core package with specific ML services
+│   ├── services        # Each subfolder here is a distinct service
+│       └──  peanuts
+│   ├── utils           # Shared utility functions
+│   └── models          # packages with models classes for specific services
+│       └── peanuts
+│           ├── detection
+│           └── cls
+├── models              # Model files (e.g., YOLOv8)
+├── notebooks           # Jupyter notebooks for experiments
+├── scripts             # Processing and training scripts
+└── tests               # Unit tests
+
+Key Assumptions and Structure
+  
+- Service-Specific Models: Each service within MLBox is expected to have its own model, tailored to its unique purpose.
+- Shared Utilities: Common utility functions are organized centrally to support multiple services.
+- Configurations: Certain configuration files (e.g., Ray Serve setup) apply to the entire MLBox project, while others are tailored to individual services.
+
+Development and Scaling Plans
+
+Although MLBox currently runs locally with WSL, future deployments might explore cloud solutions or Docker to scale as new services are added. Integrations with Hugging Face Hub for automatic model weight updates are planned, pending resolution of certificate issues.
+"""
+================================================================

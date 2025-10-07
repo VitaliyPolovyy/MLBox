@@ -1,0 +1,127 @@
+import cv2
+import time
+from pathlib import Path
+import sys
+from datetime import datetime
+
+from mlbox.settings import ROOT_DIR
+
+CURRENT_DIR = Path(__file__).parent
+
+# Define the RTSP stream URL
+rtsp_url = "rtsp://admin:Hik_vision@10.11.17.25:554/ISAPI/Streaming/Channels/1"
+#rtsp_url = "rtsp://admin:Admin12345@10.11.198.159:554/Streaming/Channels/1"
+
+capture_interval = 1  # seconds between captures (1 second for capturing each second)
+camera_name = "0713"
+connection_retry_interval = 5  # seconds to wait before retrying connection
+max_connection_retries = 3  # maximum number of retries for initial connection
+
+# Define the start and end times
+START_TIME = datetime.strptime("02:30", "%H:%M").time() 
+END_TIME = datetime.strptime("17:30", "%H:%M").time()  
+
+# Setup output folder
+output_folder = ROOT_DIR / "tmp" / CURRENT_DIR.name / "output"
+output_folder.mkdir(parents=True, exist_ok=True)
+
+print(f"Starting camera capture script. Images will be saved to {output_folder}")
+print(f"Capture window: {START_TIME} to {END_TIME}")
+print(f"Saving frames every {capture_interval} second(s)")
+
+def connect_to_camera(url, max_retries=3):
+    """Establish connection to camera with retry mechanism"""
+    for attempt in range(max_retries):
+        try:
+            print(f"Attempting to connect to camera (attempt {attempt+1}/{max_retries})...")
+            cap = cv2.VideoCapture(url)
+            if cap.isOpened():
+                print("Successfully connected to camera")
+                return cap
+            else:
+                print(f"Failed to open video stream, attempt {attempt+1}/{max_retries}")
+        except Exception as e:
+            print(f"Error connecting to camera: {e}")
+        
+        if attempt < max_retries - 1:
+            print(f"Retrying in {connection_retry_interval} seconds...")
+            time.sleep(connection_retry_interval)
+    
+    return None
+
+try:
+    cap = None
+    last_connection_attempt = 0
+    last_capture_time = 0
+    
+    while True:
+        current_time = datetime.now()
+        
+        # Check if we're in the capture time window
+        if START_TIME <= current_time.time() <= END_TIME:
+            # If no connection or connection lost, try to connect/reconnect
+            if cap is None or not cap.isOpened():
+                # Only retry connection every connection_retry_interval seconds
+                if time.time() - last_connection_attempt > connection_retry_interval:
+                    last_connection_attempt = time.time()
+                    
+                    # Release any existing connection first
+                    if cap is not None:
+                        cap.release()
+                        
+                    cap = connect_to_camera(rtsp_url, max_connection_retries)
+                    if cap is None:
+                        print("Failed to connect to camera after maximum retries")
+                        time.sleep(connection_retry_interval)
+                        continue
+            
+            # Check if it's time to capture a frame
+            if time.time() - last_capture_time >= capture_interval:
+                try:
+                    # Read frame
+                    ret, frame = cap.read()
+                    
+                    if ret:
+                        # Save the frame
+                        filename = f"{camera_name}_{current_time.strftime('%Y_%m_%d_%H_%M_%S')}.jpg"
+                        file_path = output_folder / filename
+                        cv2.imwrite(str(file_path), frame)
+                        print(f"Saved frame to {filename}")
+                        last_capture_time = time.time()
+                    else:
+                        print("Failed to read frame - camera connection may be lost")
+                        # Mark connection as lost
+                        cap.release()
+                        cap = None
+                        
+                except Exception as e:
+                    print(f"Error during capture: {e}")
+                    # If there's an error, assume connection is bad
+                    if cap is not None:
+                        cap.release()
+                        cap = None
+        else:
+            print(f"Outside capture window. Current time: {current_time.time()}. Waiting...")
+            # Release camera resources outside of capture window
+            if cap is not None:
+                cap.release()
+                cap = None
+                print("Released camera connection (outside capture window)")
+            
+            # Check time every minute during off-hours
+            time.sleep(60)
+            continue
+        
+        # Small sleep to prevent CPU overload
+        time.sleep(0.1)
+        
+except KeyboardInterrupt:
+    print("Capture stopped by user")
+except Exception as e:
+    print(f"Unexpected error: {e}")
+finally:
+    # Clean up
+    if cap is not None:
+        cap.release()
+    cv2.destroyAllWindows()
+    print("Script terminated")

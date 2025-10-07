@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/bin/python:*)",
+      "Bash(LOG_LEVEL=DEBUG .venv/bin/python \"mlbox/services/LabelGuard/labelguard.py\")",
+      "Read(//home/dev/.claude/**)",
+      "Bash(cat:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "WebSearch",
+      "Bash(chmod:*)",
+      "Bash(echo $PATH)",
+      "Bash(echo \"$PATH\")",
+      "Bash(set -a)",
+      "Bash(source:*)",
+      "Bash(set +a)",
+      "Read(//home/dev/MLBox/**)",
+      "Bash(/dev/null)",
+      "WebFetch(domain:developer.adobe.com)",
+      "Bash(curl:*)",
+      "Read(//tmp/**)",
+      "Bash(python:*)",
+      "Bash(\"assetID\":\"urn:aaid:AS:UE1:60ee69e1-3529-4265-aacc-8d3648581baf\",)",
+      "Bash(\"getCharBounds\":true,)",
+      "Bash(\"elementsToExtract\":[\"text\"],)",
+      "Bash(\"ocrOptions\": {)",
+      "Bash(\"locale\": \"ru-RU\")",
+      "Bash(export LOG_LEVEL=DEBUG)",
+      "Bash(timeout:*)",
+      "Bash(export LOG_LEVEL=INFO)",
+      "Bash(find:*)",
+      "Read(//mnt/c/**)",
+      "Bash(export CONSOLE_ONLY_LOGGING=false)",
+      "Bash(LOG_LEVEL=INFO .venv/bin/python \"mlbox/services/LabelGuard/labelguard.py\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,14 @@
+http_options:
+  host: 0.0.0.0
+  port: 8000
+
+applications:
+  - name: Peanuts
+    route_prefix: "/peanuts"
+    import_path: deployments.peanut_deployment:PeanutsDeployment
+    max_batch_size: 1
+    batch_wait_timeout_s: 0.1
+    max_ongoing_requests: 2
+    runtime_env:
+      env_vars:
+        RAY_RUNTIME_ENV_MODE: "host"
