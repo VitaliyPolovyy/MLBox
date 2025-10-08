@@ -216,8 +216,8 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"No existing deployments to shutdown: {e}")
     
-    serve.start(http_options={"host": "0.0.0.0", "port": 8000})
-    print("Started Ray Serve on http://0.0.0.0:8000")
+    serve.start(http_options={"host": "0.0.0.0", "port": 8001})
+    print("Started Ray Serve on http://0.0.0.0:8001")
     
     serve.run(PeanutsDeployment, route_prefix="/peanuts/process_image")
     print("Peanuts deployment is running at /peanuts/process_image")

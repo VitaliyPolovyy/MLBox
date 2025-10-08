@@ -42,7 +42,6 @@ ERP_ENDPOINT = (
 
 
 input_folder = ROOT_DIR / "tmp" / CURRENT_DIR.name / "input"
-result_folder = ROOT_DIR / "tmp" / CURRENT_DIR.name / "output"
 
 
 def process_requests(
@@ -116,7 +115,7 @@ def process_peanuts_images(
 
     if app_logger.level == "DEBUG":
         save_images_with_annotations(
-            preprocessed_images, step_name="preprocessing", output_folder=result_folder )
+            preprocessed_images, step_name="preprocessing", output_folder=artifact_service.get_service_dir(SERVICE_NAME) )
 
     # load weights file and detect peanuts on the images
     cls_model_path = hf_hub_download(
@@ -141,7 +140,7 @@ def process_peanuts_images(
         save_images_with_annotations(
             preprocessed_images,
             step_name="detection",
-            output_folder=result_folder,
+            output_folder=artifact_service.get_service_dir(SERVICE_NAME),
             bounding_boxes=bounding_boxes,
             masks=masks,
         )
@@ -222,11 +221,10 @@ def process_peanuts_images(
         )
 
         # Ensure result folder exists
-        result_folder.mkdir(parents=True, exist_ok=True)
         
         for result in peanut_processing_results:
             result.result_image.save(
-                result_folder / f"result_{result.original_image_filename}",
+                artifact_service.get_service_dir(SERVICE_NAME) / f"result_{result.original_image_filename}",
                 format="JPEG",
             )
 
@@ -255,7 +253,7 @@ def process_peanuts_images(
             classes=classes,
             contours=contours,
             ellipses=ellipses,
-            output_folder=result_folder,
+            output_folder=artifact_service.get_service_dir(SERVICE_NAME),
         )
 
     return peanut_processing_results
@@ -270,12 +268,10 @@ def prepare_excel(peanut_processing_result: PeanutProcessingResult) -> Path:
     Returns:
         Path: The path to the generated Excel file.
     """
-    # Ensure result folder exists
-    result_folder.mkdir(parents=True, exist_ok=True)
     
     # Define output file path
     excel_file = (
-        result_folder
+        artifact_service.get_service_dir(SERVICE_NAME)
         / f"{Path(peanut_processing_result.original_image_filename).stem}.xlsx"
     )
 
@@ -578,7 +574,7 @@ if __name__ == "__main__":
 
 
 
-    input_folder = Path(r"/home/polovyi/projects/mlbox/assets/datasets/peanut/2025-09-24-test-measurement")
+    input_folder = Path(r"/home/polovyi/projects/mlbox/assets/datasets/peanut/2025-10-08-test-measurement")
     output_folder = input_folder / "output"
     
     

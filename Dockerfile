@@ -32,11 +32,26 @@ COPY --chown=1000:1000 assets/ ./assets/
 COPY --chown=1000:1000 setup.py ./
 
 RUN pip install -e .
+
+# Download HuggingFace models at build time (before switching to appuser)
+ARG HF_TOKEN
+ARG HF_PEANUT_SEG_REPO_ID
+ARG HF_PEANUT_SEG_FILE
+ARG HF_PEANUT_CLS_REPO_ID
+ARG HF_PEANUT_CLS_FILE
+
+RUN if [ -n "$HF_TOKEN" ] && [ -n "$HF_PEANUT_CLS_REPO_ID" ]; then \
+    python -c "from huggingface_hub import hf_hub_download; \
+    hf_hub_download(repo_id='${HF_PEANUT_CLS_REPO_ID}', filename='${HF_PEANUT_CLS_FILE}', token='${HF_TOKEN}'); \
+    hf_hub_download(repo_id='${HF_PEANUT_SEG_REPO_ID}', filename='${HF_PEANUT_SEG_FILE}', token='${HF_TOKEN}'); \
+    print('Models downloaded successfully')"; \
+    fi
+
 USER appuser
 
 EXPOSE 8000
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8000/peanuts/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD serve status | grep -A 3 'Peanuts:' | grep 'status:' | grep -q 'HEALTHY' || exit 1
 
 # Start Ray then your app; 'exec' forwards signals to Python
 CMD ["bash","-lc","ray start --head --dashboard-host=0.0.0.0 && python deployments/peanut_deployment.py && tail -f /dev/null"]

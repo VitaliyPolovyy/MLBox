@@ -30,9 +30,6 @@ Rectangle = np.ndarray
 Contour = np.ndarray
 CURRENT_DIR = Path(__file__).parent
 
-result_folder = ROOT_DIR / "tmp" / CURRENT_DIR.name / "output"
-
-
 def vector_angle(pt1: Point, pt2: Point, pt0: Point) -> float:
     """Calculate cosine of angle between vectors pt1->pt0 and pt2->pt0."""
     dx1 = pt1[0] - pt0[0]
@@ -420,6 +417,7 @@ def preprocess_images_with_white_rectangle(
     def rotate_image(
         image: np.ndarray, rect_points: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
+        # Find the longer side of the rectangle
         d1 = np.linalg.norm(rect_points[0] - rect_points[1])
         d2 = np.linalg.norm(rect_points[1] - rect_points[2])
         pts = (
@@ -429,11 +427,24 @@ def preprocess_images_with_white_rectangle(
         )
         dx = pts[1][0] - pts[0][0]
         dy = pts[1][1] - pts[0][1]
-        angle = 180 - np.degrees(np.arctan2(dy, dx))
+        
+        # Calculate the angle of the longer side relative to horizontal
+        angle_rad = np.arctan2(dy, dx)
+        angle_deg = np.degrees(angle_rad)
+        
+        # Normalize angle to [-90, 90] to ensure minimum rotation
+        # This makes the longer side horizontal with minimal rotation
+        if angle_deg > 90:
+            angle_deg -= 180
+        elif angle_deg < -90:
+            angle_deg += 180
+        
+        # Rotate by the angle to make horizontal (positive angle rotates counter-clockwise)
+        rotation_angle = angle_deg
 
         height, width = image.shape[:2]
         center = (width // 2, height // 2)
-        M = cv2.getRotationMatrix2D(center, -angle, 1.0)
+        M = cv2.getRotationMatrix2D(center, rotation_angle, 1.0)
         rotated = cv2.warpAffine(image, M, (width, height))
         rect_points_rotated = cv2.transform(np.array([rect_points]), M)[0]
         return rotated, rect_points_rotated
@@ -486,13 +497,18 @@ def preprocess_images_with_white_rectangle(
         # Crop and resize
         processed_image, rotated_rect_points = crop_and_resize(rotated_image, rotated_rect_points)
 
-        # pixels_per_mm = np_image.width / processed_image.width 
-        corner1 = rotated_rect_points[1]  # [x1, y1]
-        corner2 = rotated_rect_points[2]  # [x2, y2]
-
-        # Calculate distance between them
-        sheet_width_px = np.sqrt((corner2[0] - corner1[0])**2 + (corner2[1] - corner1[1])**2)
+        # Calculate all four side lengths of the rotated rectangle
+        d1 = np.linalg.norm(rotated_rect_points[0] - rotated_rect_points[1])
+        d2 = np.linalg.norm(rotated_rect_points[1] - rotated_rect_points[2])
+        d3 = np.linalg.norm(rotated_rect_points[2] - rotated_rect_points[3])
+        d4 = np.linalg.norm(rotated_rect_points[3] - rotated_rect_points[0])
         
+        # Sort the side lengths and take the average of the two smallest
+        # This handles imperfect rectangles where opposite sides aren't exactly equal
+        sides = sorted([d1, d2, d3, d4])
+        sheet_width_px = (sides[0] + sides[1]) / 2
+        
+        # Calculate pixels per mm using the actual width
         pixels_per_mm = sheet_width_px / sheet_width
 
 

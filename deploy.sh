@@ -66,7 +66,7 @@ echo "📤 Managing local registry..."
 # Start registry if not running
 if ! docker ps | grep -q local-registry; then
     echo "⚠️  Starting local registry..."
-    docker run -d --name local-registry -p 5000:5000 -v registry-data:/var/lib/registry registry:2
+    docker run -d --name local-registry --restart=unless-stopped -p 5000:5000 -v registry-data:/var/lib/registry registry:2
     sleep 3
 fi
 
@@ -89,7 +89,20 @@ VERSION_COUNT=$(docker images $REGISTRY_HOST/mlbox --format "{{.Tag}}" | grep -v
 if [ $VERSION_COUNT -gt $MAX_VERSIONS ]; then
     OLDEST=$(docker images $REGISTRY_HOST/mlbox --format "{{.Tag}}" | grep -v latest | sort | head -1)
     echo "🗑️  Removing oldest: $OLDEST"
-    docker rmi $REGISTRY_HOST/mlbox:$OLDEST
+    
+    # Find and remove any containers using this image
+    CONTAINERS_USING_IMAGE=$(docker ps -a --filter "ancestor=$REGISTRY_HOST/mlbox:$OLDEST" --format "{{.ID}}")
+    if [ ! -z "$CONTAINERS_USING_IMAGE" ]; then
+        echo "   ⚠️  Found containers using this image, removing them first..."
+        for container in $CONTAINERS_USING_IMAGE; do
+            echo "   🗑️  Stopping and removing container: $container"
+            docker stop $container 2>/dev/null || true
+            docker rm $container 2>/dev/null || true
+        done
+    fi
+    
+    # Now remove the image (use --force just in case)
+    docker rmi -f $REGISTRY_HOST/mlbox:$OLDEST || echo "   ⚠️  Could not remove image $OLDEST, skipping..."
 fi
 
 echo "✅ Registry updated successfully!"
@@ -98,6 +111,9 @@ echo "🎉 Deployment completed successfully!"
 echo ""
 echo "📋 Next steps:"
 echo "   • Run locally: docker run -p 8000:8000 mlbox:latest"
+echo ""
+echo "📋 Production (from other servers):"
+echo "   • Configure insecure registry: Add '\"insecure-registries\": [\"$REGISTRY_HOST\"]' to /etc/docker/daemon.json"
 echo "   • Pull from registry: docker pull $REGISTRY_HOST/mlbox:latest"
-echo "   • Run from registry: docker run -p 8000:8000 $REGISTRY_HOST/mlbox:latest"
-echo "   • List registry versions: docker images $REGISTRY_HOST/mlbox"
+echo "   • Run from registry: docker run -d -p 8000:8000 $REGISTRY_HOST/mlbox:latest"
+echo "   • List registry versions: curl http://$REGISTRY_HOST/v2/mlbox/tags/list"

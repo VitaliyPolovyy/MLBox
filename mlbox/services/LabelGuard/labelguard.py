@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Literal
 import datetime
 import json
 import ast
@@ -75,11 +75,31 @@ class LabelError:
     text_block: Optional[TextBlock] = None  # Link to the TextBlock where error occurred
 
 @dataclass
-class VisualOverlay:
-    overlay_type: str  # "background", "rectangle", "underline"
-    color: tuple  # (R, G, B, A) for transparency
-    error_area: List[tuple]  # Bounding boxes to highlight
-    error: LabelError  # Associated error for click handling
+class VisualMarker:
+    """Visual marker for drawing on images"""
+    type: Literal["outline", "highlight"]  # outline = border, highlight = filled
+    bbox: tuple  # (x1, y1, x2, y2)
+    color: tuple  # (R, G, B)
+    opacity: Optional[float] = None  # For highlight type (0.0 - 1.0)
+    width: Optional[int] = None  # For outline type (pixels)
+
+
+@dataclass
+class RuleCheckResult:
+    # Identification
+    rule_name: str  # e.g., "text_match", "allergen_count"
+    scope: Literal["block", "label"]  # Applied to block or entire label
+    textblock: Optional[TextBlock] = None  # The text block (if scope="block"), None for label scope
+    
+    # Validation result
+    passed: bool = True
+    score: float = 100.0  # 0-100
+    threshold: Optional[float] = None  # Expected threshold (e.g., 90.0)
+    
+    # Display data
+    details_html: str = ""  # HTML for Level 2/3 text display
+    visual_markers: List[VisualMarker] = field(default_factory=list) 
+
 
 @dataclass
 class LabelProcessingResult:
@@ -828,6 +848,135 @@ def refine_text (ocr_result: OCRResult):
     
     return ocr_result
 
+def validate_text_matching(block: TextBlock) -> Optional[RuleCheckResult]:
+    """
+    Block-level rule: Validate OCR text matches etalon text
+    
+    Args:
+        block: Text block to validate
+        
+    Returns:
+        RuleCheckResult or None if rule doesn't apply
+    """
+    
+    # Skip if no etalon text to compare
+    if not block.etalon_text:
+        return None
+    
+    # Get all words from sentences in one line
+    words = [word for sentence in block.sentences for word in sentence.words]
+    
+    # Calculate matching score using LCS results
+    lcs_results = block.lcs_results or []
+    text = block.text.replace("\n", " ")
+    
+    # Get unmatched text positions (text that doesn't match etalon)
+    position_ranges = get_unmatched_positions(text, lcs_results)
+    
+    # Get words at unmatched positions (absent words)
+    absent_words = get_words_by_char_position(words, position_ranges)
+    # Filter out punctuation
+    absent_words = [word for word in absent_words if word.text not in [" ", ".", ",", "!", "?", ":", ";", "\n"]]
+    
+    # Calculate score: (total_words - absent_words) / total_words * 100
+    total_words = len([w for w in words if w.text not in [" ", ".", ",", "!", "?", ":", ";", "\n"]])
+    score = ((total_words - len(absent_words)) / total_words * 100) if total_words > 0 else 0
+    
+    # Define threshold
+    threshold = 90.0
+    passed = score >= threshold
+    
+    # Create visual markers
+    visual_markers = []
+    
+    if not passed:
+        # Add word highlight markers (convert from block coordinates to image coordinates)
+        for word in absent_words:
+            for bbox in word.bbox:
+                full_bbox = (
+                    block.bbox[0] + bbox[0],  # x1
+                    block.bbox[1] + bbox[1],  # y1
+                    block.bbox[0] + bbox[2],  # x2
+                    block.bbox[1] + bbox[3]   # y2
+                )
+                visual_markers.append(VisualMarker(
+                    type="highlight",
+                    bbox=full_bbox,
+                    color=(255, 0, 0),
+                    opacity=0.3
+                ))
+    
+    # Generate HTML details using highlight_matches_html
+    etalon_highlighted = highlight_matches_html(
+        block.etalon_text, 
+        lcs_results, 
+        use_start_a=True
+    )
+    
+    details_html = f"""
+    <div class="text-comparison">
+        <div class="text-block">
+            <h4>Не співпадає текст з еталоном</h4>
+            <p><strong>Збіг тексту:</strong> {score:.1f}% (потрібно: >{threshold}%)</p>
+            <div class="text-content">
+                <p><strong>Еталон (червоні слова відсутні на етикетці):</strong></p>
+                {etalon_highlighted}
+            </div>
+        </div>
+    </div>
+    """
+    
+    return RuleCheckResult(
+        rule_name="text_matching",
+        scope="block",
+        textblock=block,
+        passed=passed,
+        score=score,
+        threshold=threshold,
+        details_html=details_html,
+        visual_markers=visual_markers
+    )
+
+def validate_label(label_result: LabelProcessingResult) -> List[RuleCheckResult]:
+        """
+        Validate a processed label against all rules
+        
+        Args:
+            label_result: Processed label with extracted text blocks
+            
+        Returns:
+            List of RuleCheckResult objects (unified format)
+        """
+        
+        # Step 1: Initialize rule results list
+        rule_results = []
+        
+        # Step 2: Define validation rules
+        # Block-level rules (applied to each text block)
+        block_rules = [
+            validate_text_matching,      # Check OCR vs etalon
+            #validate_numbers_consistency, # Check numbers match
+            # ... more block rules
+        ]
+        
+        # Label-level rules (applied to entire label)
+        label_rules = []
+        
+        # Step 3: Apply block-level rules
+        for block in label_result.text_blocks:
+            for rule_func in block_rules:
+                result = rule_func(block)  # Pass context
+                if result:  # Some rules may not apply
+                    rule_results.append(result)
+        
+        # Step 4: Apply label-level rules
+        for rule_func in label_rules:
+            result = rule_func(label_result)
+            if result:
+                rule_results.append(result)
+        
+        return rule_results
+
 def process_labels(labels: List[LabelInput]) -> List[LabelProcessingResult]:
     """
     Process multiple labels through the complete pipeline according to architecture:
@@ -937,13 +1086,19 @@ def process_labels(labels: List[LabelInput]) -> List[LabelProcessingResult]:
 
             # Step 4: Error detection
             app_logger.info(SERVICE_NAME, f"Detecting errors for {label.kmat}")
-            result.errors = detect_errors(result)
+            
+            #result.errors = detect_errors(result)
+            errors = validate_label (result)
             app_logger.info(SERVICE_NAME, f"Found {len(result.errors)} errors for {label.kmat}")
+
+            
 
             # Step 5: Generate HTML report (disabled - only keeping interactive viewer)
             # result.html_report = generate_html_report(result)
             
+            """
             # Generate and save error overlay image if errors found
+            
             if result.errors:
                 app_logger.info(SERVICE_NAME, f"Generating error overlay image for {label.kmat}")
                 error_overlay_image = generate_error_overlay_image(
@@ -978,11 +1133,11 @@ def process_labels(labels: List[LabelInput]) -> List[LabelProcessingResult]:
                     file_name=f"{result.original_filename}_interactive_viewer.html",
                     data=interactive_viewer_html
                 )
-            
+            """
+
             results.append(result)
     
     return results
-
 
 def detect_allergens(words: List[str], language: str = "en") -> List[str]:
     """Detect allergens from bold text using LLM"""

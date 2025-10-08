@@ -91,7 +91,6 @@ marshmallow==3.26.1
 matplotlib==3.10.3
 matplotlib-inline==0.1.7
 mistune==3.1.3
-# Editable install with no version control (mlbox==0.1.0)
 modelscope==1.30.0
 mpmath==1.3.0
 msgpack==1.1.1
