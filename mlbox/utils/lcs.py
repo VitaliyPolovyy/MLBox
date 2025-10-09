@@ -21,6 +21,56 @@ class Match:
     
 
 
+def apply_ignorable_symbols(matches: List[Match], ignorable_symbols: str, ref: str, label: str) -> List[Match]:
+    """
+    Extend matches to include adjacent ignorable symbols (by 1 character).
+    Checks the symbol before start and after end, and extends if it's ignorable.
+    
+    Args:
+        matches: List of Match objects
+        ignorable_symbols: String of symbols to ignore (e.g., ",.()!:;- ")
+        ref: Reference text (to check boundaries)
+        label: Label text (to check boundaries)
+    
+    Returns:
+        List of Match objects with extended boundaries
+    """
+    extended_matches = []
+    
+    for match in matches:
+        start_a = match.start_a
+        end_a = match.start_a + match.len_a
+        start_b = match.start_b
+        end_b = match.start_b + match.len_b
+        
+        # Check and extend by 1 before start in ref
+        if start_a > 0 and ref[start_a - 1] in ignorable_symbols:
+            start_a -= 1
+        
+        # Check and extend by 1 before start in label
+        if start_b > 0 and label[start_b - 1] in ignorable_symbols:
+            start_b -= 1
+        
+        # Check and extend by 1 after end in ref
+        if end_a < len(ref) and ref[end_a] in ignorable_symbols:
+            end_a += 1
+        
+        # Check and extend by 1 after end in label
+        if end_b < len(label) and label[end_b] in ignorable_symbols:
+            end_b += 1
+        
+        # Create extended match
+        extended_matches.append(Match(
+            text=ref[start_a:end_a],
+            len_a=end_a - start_a,
+            len_b=end_b - start_b,
+            start_a=start_a,
+            start_b=start_b
+        ))
+    
+    return extended_matches
+
+
 def filter_maximal_matches(matches: List[Match]) -> List[Match]:
     """
     Filter matches to keep only maximal ones - remove overlapping matches.
@@ -65,10 +115,23 @@ def filter_maximal_matches(matches: List[Match]) -> List[Match]:
     return sorted(maximal_matches, key=lambda m: (m.start_a, m.start_b))
 
 
-def all_common_substrings_by_words(ref: str, label: str, min_length_words=2, maximal_only=False) -> List[Match]:
+def all_common_substrings_by_words(
+    ref: str, 
+    label: str, 
+    min_length_words=2, 
+    maximal_only=False,
+    ignorable_symbols: str = None
+) -> List[Match]:
     """
     Повертає всі спільні підрядки (послідовності слів) довжиною >= min_length_words
     з позиціями у symbovih у ref та label.
+    
+    Args:
+        ref: Reference text (etalon)
+        label: Label text (actual)
+        min_length_words: Minimum number of words for a match
+        maximal_only: If True, filter to keep only maximal matches
+        ignorable_symbols: String of symbols to ignore at match boundaries (e.g., ",.()!:;- ")
     """
     def tokenize_with_positions(text):
         words = []
@@ -168,7 +231,14 @@ def all_common_substrings_by_words(ref: str, label: str, min_length_words=2, max
     if maximal_only:
         res = filter_maximal_matches(res)
     
-    return filter_maximal_matches(res)
+
+    result = filter_maximal_matches(res)
+
+    if ignorable_symbols:
+        result = apply_ignorable_symbols(result, ignorable_symbols, ref, label)
+
+    
+    return result
 
 
 if __name__ == "__main__":

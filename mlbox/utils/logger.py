@@ -28,7 +28,7 @@ class Logger:
         logger.add(
             sys.stderr,
             level=LOG_LEVEL,
-            format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>"
+            format="<green>{time:HH:mm:ss}</green> | <level>{level:<8}</level> | <level>{message}</level>"
         )
         
         # File output (always enabled)

@@ -22,8 +22,15 @@ load_dotenv()
 
 from mlbox.services.LabelGuard.layout_detector import LayoutTextBlock, LayoutDetector
 from mlbox.services.LabelGuard.ocr_processor import OCRResult, OCRWord, VisionOCRProcessor
-
-from mlbox.services.LabelGuard.html_reporter import generate_html_report, Match, highlight_matches_html 
+from mlbox.services.LabelGuard.datatypes import (
+    LabelInput,
+    Sentence,
+    TextBlock,
+    RulesName,
+    VisualMarker,
+    RuleCheckResult,
+    LabelProcessingResult
+)
 from mlbox.settings import ROOT_DIR, LOG_LEVEL
 
 
@@ -32,86 +39,6 @@ SERVICE_NAME = "labelguard"
 app_logger = get_logger(ROOT_DIR)
 artifact_service = get_artifact_service(ROOT_DIR)
 llm_cache = LLMCache(artifact_service.get_service_dir(SERVICE_NAME) / "llm_cache")
-
-@dataclass
-class LabelInput:
-    kmat: str
-    version: str
-    label_image: Image.Image
-    label_image_path: str
-
-@dataclass
-class Sentence:
-    text: str
-    category: str #enmarates: ingdidients, product_name, allergen_phrase, contact_info, other
-    words: List[OCRWord]
-    index: int = 0
-
-@dataclass
-class TextBlock:
-    bbox: tuple
-    sentences: List[Sentence]
-    index: int
-    text: str
-
-    type: str #enmarates: ingdidients, other
-
-    allergens: List[OCRWord] #list of allergens if type = ingredients
-    languages: str
-    lcs_results: Optional[List[Match]] = None
-    etalon_text: Optional[str] = None
-
-class ErrorType(Enum):
-    COMPARASION_WITH_ETALON = "comparasion_with_etalon"  # text not found in etalon
-    ALLERGEN_ERROR = "allergen_error"  # count of allergen doesn't match
-    NUMBERS_ERROR = "numbers_error"  # count of numbers doesn't match
-
-@dataclass
-class LabelError:
-    error_type: ErrorType
-    html_details: str  # Detailed HTML description for popup
-    words: List[OCRWord]  # Words that have the error
-    bounding_boxes : List[tuple]  # Bounding boxes to highlight
-    text_block: Optional[TextBlock] = None  # Link to the TextBlock where error occurred
-
-@dataclass
-class VisualMarker:
-    """Visual marker for drawing on images"""
-    type: Literal["outline", "highlight"]  # outline = border, highlight = filled
-    bbox: tuple  # (x1, y1, x2, y2)
-    color: tuple  # (R, G, B)
-    opacity: Optional[float] = None  # For highlight type (0.0 - 1.0)
-    width: Optional[int] = None  # For outline type (pixels)
-
-
-@dataclass
-class RuleCheckResult:
-    # Identification
-    rule_name: str  # e.g., "text_match", "allergen_count"
-    scope: Literal["block", "label"]  # Applied to block or entire label
-    textblock: Optional[TextBlock] = None  # The text block (if scope="block"), None for label scope
-    
-    # Validation result
-    passed: bool = True
-    score: float = 100.0  # 0-100
-    threshold: Optional[float] = None  # Expected threshold (e.g., 90.0)
-    
-    # Display data
-    details_html: str = ""  # HTML for Level 2/3 text display
-    visual_markers: List[VisualMarker] = field(default_factory=list) 
-
-
-@dataclass
-class LabelProcessingResult:
-    text_blocks: List[TextBlock] = field(default_factory=list)
-    html_report: str = ""
-    errors: List[LabelError] = field(default_factory=list)  # Validation errors
-    # None if success
-    error_message: Optional[str] = None
-    kmat: Optional[str] = None
-    version: Optional[str] = None
-    original_filename: Optional[str] = None
-    success: bool = True
 
 def find_etalon_text(block_type : str, language : str, etalon_text_blocks : List[dict]) -> str:
     etalon_text = ""
@@ -235,9 +162,9 @@ def get_unmatched_positions(text: str, matches: List[Match]) -> List[tuple]:
     
     return unmatched_ranges
 
-def detect_comparasiomn_with_etalon_text_errors(label_processing_result: LabelProcessingResult) -> List[LabelError]:
+def rule_check_text_matches_etalon(label_processing_result: LabelProcessingResult) -> List[RuleCheckResult]:
     """Detect text that appears in OCR but not in etalon text"""
-    errors = []
+    rule_check_results = []
     app_logger.info(SERVICE_NAME, f"Starting error detection for {len(label_processing_result.text_blocks)} text blocks")
    
     for text_block in label_processing_result.text_blocks:
@@ -250,53 +177,83 @@ def detect_comparasiomn_with_etalon_text_errors(label_processing_result: LabelPr
         lcs_results = []
         text = text_block.text.replace("\n", " ")
         if text_block.etalon_text and text_block.text:
-            lcs_results = all_common_substrings_by_words(text, text_block.etalon_text, min_length_words=2, maximal_only=True)
+            lcs_results = all_common_substrings_by_words(
+                text, 
+                text_block.etalon_text, 
+                min_length_words=2, 
+                maximal_only=True,
+                ignorable_symbols=",.()!:;- "
+            )
 
         # Get unmatched text positions (text that doesn't match etalon)
         position_ranges = get_unmatched_positions(text, lcs_results)
         
         error_words = get_words_by_char_position(words, position_ranges)
         # to do: i want to delete error words like: space, period, comma, etc.
-        error_words = [word for word in error_words if word.text not in [" ", ".", ",", "!", "?", ":", ";", "\n"]]
+        error_words = [word for word in error_words if word.text not in [",", ".", "(", ")", "[", "]", "{", "}", " ", ".", ",", "!", "?", ":", ";", "\n"]]
+
+        # Calculate score based on word matching
+        etalon_words = text_block.etalon_text.split() if text_block.etalon_text else []
+        total_words = len(etalon_words)
+        missing_words = len(error_words)
+        
+        # Calculate score: 100 - (missing_words / total_words * 100)
+        if total_words > 0:
+            score = 100 - (missing_words / total_words * 100)
+        else:
+            score = 100.0
+        
+        score = max(0, min(100, score))  # Clamp between 0 and 100
+        threshold = 90.0
+        passed = (score >= threshold)
+        
+        # Create score expression for visualization
+        score_expression = f"100 - {missing_words} / {total_words} * 100" if total_words > 0 else "100"
 
         if error_words:
-            # Convert word bboxes from text block coordinates to full image coordinates
-            full_image_bboxes = []
+            # Create visual markers for error words
+            visual_markers = []
+            
+            # Add red outline around the entire text block
+            visual_markers.append(VisualMarker(
+                type="outline",
+                bbox=text_block.bbox,
+                color=(255, 0, 0),
+                width=3
+            ))
+            
+            # Add light red highlight on each error word
             for word in error_words:
                 for bbox in word.bbox:
-                    # Add text block offset to word coordinates
+                    # Convert from text block coordinates to full image coordinates
                     full_bbox = (
                         text_block.bbox[0] + bbox[0],  # x1
                         text_block.bbox[1] + bbox[1],  # y1
                         text_block.bbox[0] + bbox[2],  # x2
                         text_block.bbox[1] + bbox[3]   # y2
                     )
-                    full_image_bboxes.append(full_bbox)
+                    visual_markers.append(VisualMarker(
+                        type="highlight",
+                        bbox=full_bbox,
+                        color=(255, 100, 100),
+                        opacity=0.4
+                    ))
             
-            # Get highlighted versions of both texts using existing function
-            etalon_highlighted = highlight_matches_html(text_block.etalon_text or "", text_block.lcs_results or [], use_start_a=True)
-            
-            # Generate detailed HTML content for this error
-            error_html_details = f"""
-            <div class="text-comparison">
-                <div class="text-block">
-                    <h4>Не співпадає текст з еталоном (червоні слова - відсутні на етикетці)</h4>
-                    <div class="text-content">{etalon_highlighted}</div>
-                </div>
-            </div>
-            """
-            
-            errors.append(LabelError(
-                error_type=ErrorType.COMPARASION_WITH_ETALON,
-                html_details=error_html_details,
-                words=error_words,
-                bounding_boxes = full_image_bboxes,
-                text_block=text_block
+            rule_check_results.append(RuleCheckResult(
+                rule_name=RulesName.ETALON_MATCHING,
+                scope="block",
+                text_block=text_block,
+                affected_words=error_words,
+                visual_markers=visual_markers,
+                passed=passed,
+                score=score,
+                threshold=threshold,
+                score_expression=score_expression
             ))
     
-    return errors
+    return rule_check_results
 
-def detect_allergen_errors(label_processing_result: LabelProcessingResult) -> List[LabelError]:
+def rule_check_allergens(label_processing_result: LabelProcessingResult) -> List[RuleCheckResult]:
     """
     Detect allergen count mismatches between text blocks.
     
@@ -324,76 +281,54 @@ def detect_allergen_errors(label_processing_result: LabelProcessingResult) -> Li
     # 2. Compare each block's allergen count with etalon count
     for text_block in text_blocks_with_allergens:
         current_count = len(text_block.allergens)
+        passed = (current_count == etalon_count)
+        score = (current_count / etalon_count * 100) if etalon_count > 0 else 100.0
         
-        #if current_count != etalon_count:
-        if 1==1:
-            # 3. Generate HTML details for allergen error
-            allergen_names = [allergen.text for allergen in text_block.allergens]
-            allergens_display = ", ".join(allergen_names)
-            
-            #to do: I want to add list of allergens in html details
-            allergen_html_details = allergens_display + f"""
-            <div class="error-section">
-                <h3>Проблеми з аліргенами</h3>
-                <p><strong>Аліргени:</strong> {allergens_display} (має бути {etalon_count})</p>
-            </div>
-            """
-            
-            # Get bounding boxes for all allergens in this block
-            allergen_bboxes = [allergen.bbox for allergen in text_block.allergens]
-            
-            errors.append(LabelError(
-                error_type=ErrorType.ALLERGEN_ERROR,
-                html_details=allergen_html_details,
-                words=text_block.allergens,
-                bounding_boxes=allergen_bboxes,
-                text_block=text_block
+        # Create visual markers for allergens
+        visual_markers = []
+        allergen_names = [allergen.text for allergen in text_block.allergens]
+        
+        # Add yellow outline around text block if allergen check fails
+        if not passed:
+            visual_markers.append(VisualMarker(
+                type="outline",
+                bbox=text_block.bbox,
+                color=(255, 255, 0),
+                width=3
             ))
-    
-    return errors
-
-def detect_numbers_errors(text_block: TextBlock) -> List[LabelError]:
-    """Detect number count mismatches"""
-    errors = []
-    
-    # Extract numbers from etalon text
-    etalon_numbers = set()
-    if text_block.etalon_text:
-        etalon_number_matches = re.findall(r'\b\d+(?:\.\d+)?(?:[%°]|\s*(?:mg|g|ml|kg|lb|oz))?\b', text_block.etalon_text)
-        etalon_numbers = set(match.lower().strip() for match in etalon_number_matches)
-    
-    # Extract numbers from OCR text
-    ocr_numbers = set()
-    for sentence in text_block.sentences:
-        for word in sentence.words:
-            number_matches = re.findall(r'\b\d+(?:\.\d+)?(?:[%°]|\s*(?:mg|g|ml|kg|lb|oz))?\b', word.text)
-            ocr_numbers.update(match.lower().strip() for match in number_matches)
-    
-    # Check for mismatches
-    missing_numbers = etalon_numbers - ocr_numbers
-    extra_numbers = ocr_numbers - etalon_numbers
-    
-    if missing_numbers or extra_numbers:
-        error_details = "<h3>Number Count Mismatch</h3>"
-        if missing_numbers:
-            error_details += f"<p>Missing numbers: <strong>{', '.join(missing_numbers)}</strong></p>"
-        if extra_numbers:
-            error_details += f"<p>Extra numbers: <strong>{', '.join(extra_numbers)}</strong></p>"
         
-        # Get word objects for numbers
-        number_words = []
-        for sentence in text_block.sentences:
-            for word in sentence.words:
-                if re.search(r'\b\d+(?:\.\d+)?(?:[%°]|\s*(?:mg|g|ml|kg|lb|oz))?\b', word.text):
-                    number_words.append(word)
+        # Highlight each allergen word
+        for allergen in text_block.allergens:
+            for bbox in allergen.bbox:
+                # Convert from text block coordinates to full image coordinates
+                full_bbox = (
+                    text_block.bbox[0] + bbox[0],
+                    text_block.bbox[1] + bbox[1],
+                    text_block.bbox[0] + bbox[2],
+                    text_block.bbox[1] + bbox[3]
+                )
+                visual_markers.append(VisualMarker(
+                    type="highlight",
+                    bbox=full_bbox,
+                    color=(255, 255, 100),
+                    opacity=0.3
+                ))
         
-        error = LabelError(
-            error_type=ErrorType.NUMBERS_ERROR,
-            html_details=error_details,
-            words=number_words,
-            text_block=text_block
-        )
-        errors.append(error)
+        errors.append(RuleCheckResult(
+            rule_name=RulesName.ALLERGENS,
+            scope="block",
+            text_block=text_block,
+            passed=passed,
+            score=score,
+            threshold=100.0,
+            affected_words=text_block.allergens,
+            visual_markers=visual_markers,
+            metadata={
+                'expected_count': etalon_count,
+                'actual_count': current_count,
+                'allergen_names': allergen_names
+            }
+        ))
     
     return errors
 
@@ -428,15 +363,16 @@ def get_words_by_char_position(words, positions : List[tuple]):
     return result_words
 
 
-def detect_errors(label_processing_result: LabelProcessingResult) -> List[LabelError]:
+def validate_label(label_processing_result: LabelProcessingResult) -> List[RuleCheckResult]:
     """Detect all errors in a LabelProcessingResult"""
-    all_errors = []
+    rule_check_results = []
 
-    all_errors.extend(detect_comparasiomn_with_etalon_text_errors(label_processing_result))
-    all_errors.extend(detect_allergen_errors(label_processing_result))
+    rule_check_results.extend(rule_check_text_matches_etalon(label_processing_result))
+    
+    rule_check_results.extend(rule_check_allergens(label_processing_result))
         
     
-    return all_errors
+    return rule_check_results
 
 def get_word_bounding_boxes(word: OCRWord) -> List[tuple]:
     """Get all bounding boxes for a word (handles wrapped words)"""
@@ -448,391 +384,6 @@ def get_word_bounding_boxes(word: OCRWord) -> List[tuple]:
         return [word.bbox]
     else:
         return word.bbox
-
-def generate_comparison_error_report(result: LabelProcessingResult) -> str:
-    """Generate HTML report for COMPARASION_WITH_ETALON errors without table"""
-    
-    # Filter only COMPARASION_WITH_ETALON errors
-    comparison_errors = [error for error in result.errors if error.error_type == ErrorType.COMPARASION_WITH_ETALON]
-    
-    if not comparison_errors:
-        return ""
-    
-    # Create report title
-    title = f"Text Comparison Error Report - {result.kmat} v{result.version}"
-    
-    # Generate HTML content with same foundation as generate_html_report but without table
-    html_content = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{html.escape(title)}</title>
-    <style>
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 20px;
-            background-color: #f5f5f5;
-        }}
-        
-        .report-title {{
-            text-align: center;
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 24px;
-        }}
-        
-        .error-container {{
-            background-color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            border-radius: 8px;
-            overflow: hidden;
-        }}
-        
-        .error-header {{
-            background-color: #ff4444;
-            color: white;
-            padding: 15px;
-            font-weight: bold;
-            font-size: 16px;
-        }}
-        
-        .error-content {{
-            padding: 20px;
-        }}
-        
-        .error-details {{
-            margin-bottom: 15px;
-        }}
-        
-        .highlighted-text {{
-            background-color: #ffcccc;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-weight: bold;
-        }}
-        
-        .matched-text {{
-            background-color: #ccffcc;
-            padding: 2px 4px;
-            border-radius: 3px;
-        }}
-        
-        .text-comparison {{
-            display: flex;
-            gap: 20px;
-            margin-top: 15px;
-        }}
-        
-        .text-block {{
-            flex: 1;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #fafafa;
-        }}
-        
-        .text-block h4 {{
-            margin-top: 0;
-            color: #333;
-        }}
-        
-        .text-content {{
-            white-space: pre-wrap;
-            word-break: break-word;
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-            font-size: 14px;
-            line-height: 1.4;
-        }}
-    </style>
-</head>
-<body>
-    <h1 class="report-title">{html.escape(title)}</h1>
-"""
-    
-    # Add each comparison error
-    for i, error in enumerate(comparison_errors):
-        html_content += f"""
-    <div class="error-container">
-        <div class="error-header">
-            Error {i+1}: Extra Text Found
-        </div>
-        <div class="error-content">
-            <div class="error-details">
-                {error.html_details}
-            </div>
-            
-            <div class="text-comparison">
-                <div class="text-block">
-                    <h4>Label Text (with errors highlighted)</h4>
-                    <div class="text-content">{html.escape(error.text_block.text if error.text_block else '')}</div>
-                </div>
-                <div class="text-block">
-                    <h4>Template Text</h4>
-                    <div class="text-content">{html.escape(error.text_block.etalon_text if error.text_block and error.text_block.etalon_text else 'No template available')}</div>
-                </div>
-            </div>
-        </div>
-    </div>
-"""
-    
-    html_content += """
-</body>
-</html>"""
-    
-    return html_content
-
-def generate_interactive_error_viewer(
-    result: LabelProcessingResult,
-    error_overlay_image_path: str
-) -> str:
-    """Generate interactive HTML viewer for error visualization"""
-    
-    # Group errors by text block
-    text_block_errors = {}
-    for error in result.errors:
-        if error.text_block:
-            block_id = id(error.text_block)
-            if block_id not in text_block_errors:
-                text_block_errors[block_id] = {
-                    'text_block': error.text_block,
-                    'errors': []
-                }
-            text_block_errors[block_id]['errors'].append(error)
-    
-    # Create highlights data for JavaScript
-    highlights = []
-    for block_id, block_data in text_block_errors.items():
-        text_block = block_data['text_block']
-        errors = block_data['errors']
-        
-        # Join all HTML details for this text block
-        combined_details = []
-        for error in errors:
-            combined_details.append(error.html_details)
-
-        #to do: add Enter before block text
-        combined_details.append("<br>")
-        combined_details.append(f"{text_block.type}")
-        combined_details.append(f"{text_block.text}")
-
-        
-        highlights.append({
-            'x1': text_block.bbox[0],
-            'y1': text_block.bbox[1], 
-            'x2': text_block.bbox[2],
-            'y2': text_block.bbox[3],
-            'type': 'error',
-            'message': '<br><br>'.join(combined_details)
-        })
-    
-    # Generate HTML content
-    html_content = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  body {{ display: flex; height: 100vh; margin: 0; overflow: hidden; }}
-  #imagePanel {{ flex: 2; position: relative; overflow: hidden; border-right: 1px solid #ccc; cursor: grab; }}
-  #messagePanel {{ flex: 1; padding: 10px; overflow-y: auto; }}
-  canvas {{ display: block; }}
-</style>
-</head>
-<body>
-
-<div id="imagePanel">
-  <canvas id="labelCanvas"></canvas>
-</div>
-<div id="messagePanel">
-  <div id="msgContent">Click on a red rectangle to see error details</div>
-</div>
-
-<script>
-const canvas = document.getElementById('labelCanvas');
-const ctx = canvas.getContext('2d');
-const msgDiv = document.getElementById('msgContent');
-
-const img = new Image();
-img.src = '{error_overlay_image_path}';
-
-// Error highlighting data
-const highlights = {json.dumps(highlights, indent=2)};
-
-let scale = 1;
-let offsetX = 0, offsetY = 0;
-let isDragging = false, startX = 0, startY = 0;
-
-img.onload = () => {{
-  canvas.width = img.width;
-  canvas.height = img.height;
-  drawCanvas();
-}};
-
-function drawCanvas() {{
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.save();
-  ctx.translate(offsetX, offsetY);
-  ctx.scale(scale, scale);
-  ctx.drawImage(img, 0, 0);
-  highlights.forEach(h => {{
-    ctx.strokeStyle = 'red';
-    ctx.lineWidth = 2 / scale;
-    ctx.strokeRect(h.x1, h.y1, h.x2-h.x1, h.y2-h.y1);
-  }});
-  ctx.restore();
-}}
-
-// Click to show message
-canvas.addEventListener('click', e => {{
-  const x = (e.offsetX - offsetX) / scale;
-  const y = (e.offsetY - offsetY) / scale;
-  const hit = highlights.find(h => x>=h.x1 && x<=h.x2 && y>=h.y1 && y<=h.y2);
-  if(hit) msgDiv.innerHTML = `
-  <div style="margin-bottom:10px;">
-    <span style="font-weight:bold; color:#c00;">${{hit.type}}</span><br>
-    <span>${{hit.message}}</span>
-  </div>
-`;
-}});
-
-// Zoom with Ctrl + wheel
-canvas.addEventListener('wheel', e => {{
-  if(e.ctrlKey) {{
-    e.preventDefault();
-    const zoom = e.deltaY < 0 ? 1.1 : 0.9;
-    const mx = (e.offsetX - offsetX) / scale;
-    const my = (e.offsetY - offsetY) / scale;
-
-    scale *= zoom;
-    offsetX -= mx * (zoom - 1) * scale;
-    offsetY -= my * (zoom - 1) * scale;
-    drawCanvas();
-  }}
-}});
-
-// Pan with mouse drag
-canvas.addEventListener('mousedown', e => {{
-  isDragging = true;
-  startX = e.clientX - offsetX;
-  startY = e.clientY - offsetY;
-  canvas.style.cursor = 'grabbing';
-}});
-
-canvas.addEventListener('mousemove', e => {{
-  if(isDragging){{
-    offsetX = e.clientX - startX;
-    offsetY = e.clientY - startY;
-    drawCanvas();
-  }}
-}});
-
-canvas.addEventListener('mouseup', () => {{ isDragging = false; canvas.style.cursor = 'grab'; }});
-canvas.addEventListener('mouseleave', () => {{ isDragging = false; canvas.style.cursor = 'grab'; }});
-</script>
-
-</body>
-</html>"""
-    
-    return html_content
-
-def generate_error_overlay_image(
-    original_image: Image.Image,
-    result: LabelProcessingResult,
-    errors: List[LabelError]
-) -> Image.Image:
-    """
-    Creates overlay image with error highlights
-    Returns: Original image with error overlays drawn on top
-    """
-    # Create a copy of the original image to draw on
-    overlay_image = original_image.copy()
-    # Convert to RGBA if not already
-    if overlay_image.mode != 'RGBA':
-        overlay_image = overlay_image.convert('RGBA')
-    draw = ImageDraw.Draw(overlay_image)
-    
-    # Get unique text blocks that have errors
-    error_text_blocks = []
-    seen_text_blocks = set()
-    for error in errors:
-        if error.text_block and id(error.text_block) not in seen_text_blocks:
-            error_text_blocks.append(error.text_block)
-            seen_text_blocks.add(id(error.text_block))
-    
-    # Step 1: Draw red rectangle over text blocks that have errors
-    for text_block in error_text_blocks:
-        x1, y1, x2, y2 = text_block.bbox
-        # Draw red rectangle outline over the text block
-        draw.rectangle([x1, y1, x2, y2], outline=(255, 0, 0), width=3)
-        
-        # Draw text block index on the rectangle
-        try:
-            # Try to use a default font, fallback to basic if not available
-            from PIL import ImageFont
-            try:
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20)
-            except:
-                try:
-                    font = ImageFont.load_default()
-                except:
-                    font = None
-        except ImportError:
-            font = None
-            
-        # Draw the text block index
-        text = f"{text_block.index}"
-        if font:
-            # Get text size to position it properly
-            bbox = draw.textbbox((0, 0), text, font=font)
-            text_width = bbox[2] - bbox[0]
-            text_height = bbox[3] - bbox[1]
-        else:
-            # Approximate size for default font
-            text_width = len(text) * 6
-            text_height = 12
-            
-        # Position text at top-left corner of the rectangle
-        text_x = x1 + 5
-        text_y = y1 + 5
-        
-        # Draw a small background rectangle for better text visibility
-        draw.rectangle([text_x - 2, text_y - 2, text_x + text_width + 2, text_y + text_height + 2], 
-                      fill=(255, 255, 255, 200), outline=(255, 0, 0))
-        
-        # Draw the text
-        if font:
-            draw.text((text_x, text_y), text, fill=(255, 0, 0), font=font)
-        else:
-            draw.text((text_x, text_y), text, fill=(255, 0, 0))
-    
-    # Step 2: Draw light red background for words with errors
-    for error in errors:
-        for word in error.words:
-            # word.bbox is a list of tuples, so we need to iterate through each bbox
-            for bbox in word.bbox:
-                # Calculate absolute coordinates
-                word_x1 = bbox[0] + error.text_block.bbox[0]
-                word_y1 = bbox[1] + error.text_block.bbox[1]
-                word_x2 = bbox[2] + error.text_block.bbox[0]
-                word_y2 = bbox[3] + error.text_block.bbox[1]
-                
-                # Create a semi-transparent light grey overlay for error words
-                # Extract the word region
-                word_region = overlay_image.crop((word_x1, word_y1, word_x2, word_y2))
-                # Convert to RGB if needed
-                if word_region.mode != 'RGB':
-                    word_region = word_region.convert('RGB')
-                
-                # Create a light grey overlay
-                overlay = Image.new('RGB', word_region.size, (255, 0, 0))
-                # Blend with low opacity to keep text visible
-                blended = Image.blend(word_region, overlay, 0.4)  # 20% opacity
-                
-                # Paste back the blended region
-                overlay_image.paste(blended, (word_x1, word_y1))
-    
-    return overlay_image
 
 def refine_text (ocr_result: OCRResult):
     # to do: i want to repace °С to °C in ocr_result.text and ocr_result.words
@@ -847,135 +398,6 @@ def refine_text (ocr_result: OCRResult):
         
     
     return ocr_result
-
-def validate_text_matching(block: TextBlock) -> Optional[RuleCheckResult]:
-    """
-    Block-level rule: Validate OCR text matches etalon text
-    
-    Args:
-        block: Text block to validate
-        
-    Returns:
-        RuleCheckResult or None if rule doesn't apply
-    """
-    
-    # Skip if no etalon text to compare
-    if not block.etalon_text:
-        return None
-    
-    # Get all words from sentences in one line
-    words = [word for sentence in block.sentences for word in sentence.words]
-    
-    # Calculate matching score using LCS results
-    lcs_results = block.lcs_results or []
-    text = block.text.replace("\n", " ")
-    
-    # Get unmatched text positions (text that doesn't match etalon)
-    position_ranges = get_unmatched_positions(text, lcs_results)
-    
-    # Get words at unmatched positions (absent words)
-    absent_words = get_words_by_char_position(words, position_ranges)
-    # Filter out punctuation
-    absent_words = [word for word in absent_words if word.text not in [" ", ".", ",", "!", "?", ":", ";", "\n"]]
-    
-    # Calculate score: (total_words - absent_words) / total_words * 100
-    total_words = len([w for w in words if w.text not in [" ", ".", ",", "!", "?", ":", ";", "\n"]])
-    score = ((total_words - len(absent_words)) / total_words * 100) if total_words > 0 else 0
-    
-    # Define threshold
-    threshold = 90.0
-    passed = score >= threshold
-    
-    # Create visual markers
-    visual_markers = []
-    
-    if not passed:
-        # Add word highlight markers (convert from block coordinates to image coordinates)
-        for word in absent_words:
-            for bbox in word.bbox:
-                full_bbox = (
-                    block.bbox[0] + bbox[0],  # x1
-                    block.bbox[1] + bbox[1],  # y1
-                    block.bbox[0] + bbox[2],  # x2
-                    block.bbox[1] + bbox[3]   # y2
-                )
-                visual_markers.append(VisualMarker(
-                    type="highlight",
-                    bbox=full_bbox,
-                    color=(255, 0, 0),
-                    opacity=0.3
-                ))
-    
-    # Generate HTML details using highlight_matches_html
-    etalon_highlighted = highlight_matches_html(
-        block.etalon_text, 
-        lcs_results, 
-        use_start_a=True
-    )
-    
-    details_html = f"""
-    <div class="text-comparison">
-        <div class="text-block">
-            <h4>Не співпадає текст з еталоном</h4>
-            <p><strong>Збіг тексту:</strong> {score:.1f}% (потрібно: >{threshold}%)</p>
-            <div class="text-content">
-                <p><strong>Еталон (червоні слова відсутні на етикетці):</strong></p>
-                {etalon_highlighted}
-            </div>
-        </div>
-    </div>
-    """
-    
-    return RuleCheckResult(
-        rule_name="text_matching",
-        scope="block",
-        textblock=block,
-        passed=passed,
-        score=score,
-        threshold=threshold,
-        details_html=details_html,
-        visual_markers=visual_markers
-    )
-
-def validate_label(label_result: LabelProcessingResult) -> List[RuleCheckResult]:
-        """
-        Validate a processed label against all rules
-        
-        Args:
-            label_result: Processed label with extracted text blocks
-            
-        Returns:
-            List of RuleCheckResult objects (unified format)
-        """
-        
-        # Step 1: Initialize rule results list
-        rule_results = []
-        
-        # Step 2: Define validation rules
-        # Block-level rules (applied to each text block)
-        block_rules = [
-            validate_text_matching,      # Check OCR vs etalon
-            #validate_numbers_consistency, # Check numbers match
-            # ... more block rules
-        ]
-        
-        # Label-level rules (applied to entire label)
-        label_rules = []
-        
-        # Step 3: Apply block-level rules
-        for block in label_result.text_blocks:
-            for rule_func in block_rules:
-                result = rule_func(block)  # Pass context
-                if result:  # Some rules may not apply
-                    rule_results.append(result)
-        
-        # Step 4: Apply label-level rules
-        for rule_func in label_rules:
-            result = rule_func(label_result)
-            if result:
-                rule_results.append(result)
-        
-        return rule_results
 
 def process_labels(labels: List[LabelInput]) -> List[LabelProcessingResult]:
     """
@@ -995,15 +417,15 @@ def process_labels(labels: List[LabelInput]) -> List[LabelProcessingResult]:
     layout_detector = LayoutDetector()
     ocr_processor = VisionOCRProcessor()
     
-    results = []
+    label_processing_results: List[LabelProcessingResult] = []
     
     for label in labels:
         app_logger.info(SERVICE_NAME, f"Processing label: {label.kmat} v{label.version}")
 
-        result = LabelProcessingResult()
-        result.kmat = label.kmat
-        result.version = label.version
-        result.original_filename = Path(label.label_image_path).stem  # Store original filename without extension
+        label_processing_result = LabelProcessingResult()
+        label_processing_result.kmat = label.kmat
+        label_processing_result.version = label.version
+        label_processing_result.original_filename = Path(label.label_image_path).stem  # Store original filename without extension
         
         etalon_text_blocks = _get_etalon_text_blocks(label.kmat, label.version, label.label_image_path )
         
@@ -1065,7 +487,13 @@ def process_labels(labels: List[LabelInput]) -> List[LabelProcessingResult]:
             etalon_text = find_etalon_text(block_type, ocr_result.language, etalon_text_blocks)
             lcs_results = []
             if etalon_text and ocr_result.text:
-                lcs_results = all_common_substrings_by_words(etalon_text, ocr_result.text, min_length_words=2, maximal_only=True)
+                lcs_results = all_common_substrings_by_words(
+                    etalon_text, 
+                    ocr_result.text, 
+                    min_length_words=2, 
+                    maximal_only=True,
+                    ignorable_symbols=",.()!:;- "
+                )
             
             #find etalon text block by type and language
             text_block = TextBlock(
@@ -1079,65 +507,44 @@ def process_labels(labels: List[LabelInput]) -> List[LabelProcessingResult]:
                 etalon_text=etalon_text,
                 lcs_results=lcs_results
             )
-            result.text_blocks.append(text_block)
+        
+            label_processing_result.text_blocks.append(text_block)
 
-            # Step 3: Text comparison
-            app_logger.info(SERVICE_NAME, f"Starting text comparison for {label.kmat}")
+        
 
-            # Step 4: Error detection
-            app_logger.info(SERVICE_NAME, f"Detecting errors for {label.kmat}")
-            
-            #result.errors = detect_errors(result)
-            errors = validate_label (result)
-            app_logger.info(SERVICE_NAME, f"Found {len(result.errors)} errors for {label.kmat}")
+        label_processing_result.rule_check_results = validate_label(label_processing_result)
+        
+        app_logger.info(SERVICE_NAME, f"Found {len(label_processing_result.rule_check_results)} errors for {label.kmat}")
 
-            
+        
+        # Step 5: Generate validation report
+        from mlbox.services.LabelGuard import visualization
+        
+        validation_artifacts = visualization.generate_validation_report(
+            label_processing_result=label_processing_result,
+            label_image=label.label_image,
+            output_format="interactive_viewer"
+        )
+        
+        # Step 6: Save artifacts to disk using filenames from visualization
+        for filename, image in validation_artifacts.images:
+            artifact_service.save_artifact(
+                service=SERVICE_NAME,
+                file_name=filename,
+                data=image
+            )
+        
+        if validation_artifacts.html_report:
+            artifact_service.save_artifact(
+                service=SERVICE_NAME,
+                file_name=validation_artifacts.html_filename,
+                data=validation_artifacts.html_report
+            )
+        
+        label_processing_results.append(label_processing_result)
 
-            # Step 5: Generate HTML report (disabled - only keeping interactive viewer)
-            # result.html_report = generate_html_report(result)
-            
-            """
-            # Generate and save error overlay image if errors found
-            
-            if result.errors:
-                app_logger.info(SERVICE_NAME, f"Generating error overlay image for {label.kmat}")
-                error_overlay_image = generate_error_overlay_image(
-                    label.label_image, 
-                    result, 
-                    result.errors
-                )
-                # Convert RGBA to RGB for JPEG compatibility
-                if error_overlay_image.mode == 'RGBA':
-                    # Create a white background
-                    background = Image.new('RGB', error_overlay_image.size, (255, 255, 255))
-                    background.paste(error_overlay_image, mask=error_overlay_image.split()[-1])  # Use alpha channel as mask
-                    error_overlay_image = background
-                
-                # Save error overlay image
-                overlay_filename = f"{result.original_filename}_errors_overlay.jpg"
-                artifact_service.save_artifact(
-                    service=SERVICE_NAME,
-                    file_name=overlay_filename,
-                    data=error_overlay_image
-                )
-                
-                # Generate interactive error viewer
-                app_logger.info(SERVICE_NAME, f"Generating interactive error viewer for {label.kmat}")
-                # Use just the filename since HTML and image are in same directory
-                interactive_viewer_html = generate_interactive_error_viewer(
-                    result,
-                    overlay_filename
-                )
-                artifact_service.save_artifact(
-                    service=SERVICE_NAME,
-                    file_name=f"{result.original_filename}_interactive_viewer.html",
-                    data=interactive_viewer_html
-                )
-            """
-
-            results.append(result)
     
-    return results
+    return label_processing_results
 
 def detect_allergens(words: List[str], language: str = "en") -> List[str]:
     """Detect allergens from bold text using LLM"""
