@@ -118,14 +118,14 @@ def shuffle_and_rename_files(input_folder: Path) -> None:
 
 
 if __name__ == "__main__":
-    output_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/preprocessed")
-    input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/raw")
+    output_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/peanuts/datasets/preprocessed")
+    input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/peanuts/datasets/raw")
     #preprocessing_images_for_dataset(input_folder, output_folder)
 
-    coco_annotation = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/raw/1/annotation_coco.json")
-    output_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/preprocessed/1")
-    input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/preprocessed/1")
+    coco_annotation = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/peanuts/datasets/raw/1/annotation_coco.json")
+    output_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/peanuts/datasets/preprocessed/1")
+    input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/peanuts/datasets/preprocessed/1")
     #draw_contours_from_coco_annotation(input_folder=output_folder, output_folder=output_folder, coco_annotation=coco_annotation)
 
-    input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/preprocessed/")
+    input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/peanuts/datasets/preprocessed/")
     shuffle_and_rename_files(input_folder)

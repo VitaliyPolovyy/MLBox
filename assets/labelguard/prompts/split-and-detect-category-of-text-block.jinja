@@ -1,0 +1,53 @@
+You are a Text Segmentation Model.
+Your task is to split the given text into semantic blocks and return the result in JSON format. Return ONLY valid JSON.
+
+Return the result in the specified JSON schema format.
+
+{
+  "blocks": [
+    {
+      "text": "(EN) Sweet. Sample ingredients text",  # Full text content of this block
+      "category": "ingredients",                  # Category, must match one from the provided list
+      "language": "en"                            # Use ISO 639-1 two-letter codes (e.g., "uk", "ro", "pl", "en", "ru", "de").
+                                                  # If text is multilingual, use "multilingual".
+                                                  # Do not use custom tags like "ro-md" or "ua-pl".
+    },
+    {
+      "text": "(UA) Печиво. Склад: цукор, борошно, молоко.",
+      "category": "ingredients",
+      "language": "uk"
+    },
+    {
+      "text": "(RO)(MD) "LOVITA" CLASSIC COOKIES", BISCUITI CU BUCATI DE GLAZURA (30%). Ingrediente: zahar, faina de grđu, grasimi vegetale (ulei de palmier nehidrogenat, ulei de miez de palmieat",
+      "category": "ingredients",
+      "language": "ro"
+    }
+
+
+
+  ]
+}
+
+
+### Splitting Rules
+1. A new block starts only when BOTH conditions are true:
+- A new line begins (\n), and
+- There is a clear change of language or topic.
+
+2. Special rule (applies only to category 'ingredients'):
+-If two or more 'ingredients' blocks are written in different languages, they must be separated into individual 'ingredients' blocks.
+-Other categories  remain unified, even if multilingual, as long as they describe the same content
+-Lines beginning with "Importator", "Importer", or equivalent belong to the same 'ingredients' block of that language version. They never form a new block.
+- Country-of-origin lines (e.g., "Jara de origine:", "Wyprodukowano w:") also belong to the same 'ingredients' block.
+
+3 Never split a block because of punctuation, abbreviations, or parentheses.
+4 .After splitting, verify that each block is complete and consistent within its category.
+5. Each block's "text" must exactly match part of the original text — no rephrasing, normalization, correction of errors, or omission. Copy the text character-by-character, preserving all typos, misspellings, and grammatical errors exactly as they appear.
+
+### Text:
+"{{ text }}"
+
+### Categories:
+{{ categories_desc }}
+
+IMPORTANT: Return ONLY the JSON object. Do not include any markdown formatting, code blocks, or additional text. Start your response directly with { and end with }.

@@ -1,0 +1,38 @@
+You are a text classification expert.
+Classify the following text into exactly ONE category code.
+
+### TEXT:
+"{{ text }}"
+
+### CATEGORIES:
+{{ categories_desc }}
+
+### SPECIAL CATEGORY:
+Z: Use when text contains multiple sections
+
+### RULES:
+
+1. **Most categories are multilingual:**
+Return the category name even if it is multilingual
+- Example: Manufacturer data in several languages → "B"
+
+2. **Exception - "ingredients" category:**
+If ingredients appear in 2+ languages → Return "Z". BUT: Language markers may be missing or incorrect, so if the text appears in multiple distinct languages, treat it as a multi-language block and return "Z".
+- Example: "(UA) Склад: цукор... + (RO) Ingrediente: zahar..." → "Z"
+
+3. **Different categories together:**
+Always return "Z"
+- Example: "ingredients + manufacturer" → "Z"
+
+### OUTPUT FORMAT:
+Return ONLY the lowercase category name. No explanation, no formatting, no additional text, no json.
+
+### EXAMPLES:
+
+Input: "(UA) ПЕЧИВО... Склад: цукор, борошно..."
+Output: A
+
+Input: "(UA) Склад: цукор... (RO) Ingrediente: zahar..."
+Output: Z
+
+Note: The input text comes from OCR and may contain recognition errors (wrong characters, missing language markers, merged lines, or digit–letter confusion such ). Always infer meaning from context, not exact spelling.

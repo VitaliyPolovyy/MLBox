@@ -24,9 +24,9 @@ if TYPE_CHECKING:
 
 class RulesName(Enum):
     """Names of validation rules that can be checked"""
-    ETALON_MATCHING = "etalon_matching"  # text not found in etalon
-    ALLERGENS = "allergen_error"  # count of allergen doesn't match
-    NUMBERS_IN_INGRIDIENTS = "numbers_in_ingridients"  # count of numbers doesn't match
+    ETALON_MATCHING = "etalon"  # text not found in etalon
+    ALLERGENS = "allergens"  # count of allergen doesn't match
+    NUMBERS_IN_INGRIDIENTS = "numbers"  # count of numbers doesn't match
 
 
 # ============================================================================
@@ -60,11 +60,11 @@ class TextBlock:
     """A text block detected on the label image"""
     bbox: tuple
     sentences: List[Sentence]
-    index: int
     text: str
     type: str  # enumerates: ingredients, nutrition, manufacturing_date, other
     allergens: List[OCRWord]  # list of allergens if type = ingredients
     languages: str
+    index:Optional[str] = None
     lcs_results: Optional[List[Match]] = None
     etalon_text: Optional[str] = None
 
@@ -81,6 +81,14 @@ class VisualMarker:
     color: tuple  # (R, G, B)
     opacity: Optional[float] = None  # For highlight type (0.0 - 1.0)
     width: Optional[int] = None  # For outline type (pixels)
+
+
+@dataclass
+class CategoryNumberResult:
+    """Numbers for a specific sentence category"""
+    category: str  # 'INGRIDIENTS' or 'STORAGE_CONDITIONS'
+    actual_numbers: List[str] = field(default_factory=list)      # Numbers found in THIS block's sentences
+    reference_numbers: List[str] = field(default_factory=list)   # Reference set from ALL blocks
 
 
 @dataclass
@@ -104,6 +112,14 @@ class RuleCheckResult:
     
     # Additional data for rendering (optional, rule-specific)
     metadata: dict = field(default_factory=dict)
+
+    html_details : str = ""
+
+
+@dataclass
+class NumbersCheckResult(RuleCheckResult):
+    """Result for numbers validation in INGRIDIENTS and STORAGE_CONDITIONS"""
+    category_results: List[CategoryNumberResult] = field(default_factory=list)
 
 
 @dataclass

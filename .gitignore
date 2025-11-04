@@ -38,10 +38,7 @@ artifacts/
 tmp/
 
 # Models and data
-models/
-assets/datasets/
-assets/LabelGuard/
-assets/configs/
+assets/*/datasets/*
 
 # Training scripts output
 scripts/train/*/train*/

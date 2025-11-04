@@ -57,7 +57,7 @@ class Logger:
     
     def error(self, service: str, message: str):
         formatted_message = f"{service} | {message}"
-        logger.error(formatted_message)
+        logger.error(formatted_message, exc_info=False)  # exc_info=False since tracebacks are included in message
     
     @property
     def level(self) -> str:
@@ -113,7 +113,7 @@ class ArtifactService:
                 with open(artifact_path, 'w', encoding='utf-8') as f:
                     f.write(str(data))
             
-            logger.info(f"Artifact saved: {service}/{file_name}")
+            logger.debug(f"Artifact saved: {service}/{file_name}")
             return str(artifact_path)
             
         except Exception as e:

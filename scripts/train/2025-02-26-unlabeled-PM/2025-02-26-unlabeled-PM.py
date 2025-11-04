@@ -159,11 +159,11 @@ if __name__ == "__main__":
 
     model_file = CURRENT_DIR / "experiment16" / "weights" / "best.pt"
 
-    input_folder = ROOT_DIR / "assets" / "datasets" / "peanut" / "separated" / "for-training" / "test" /"images"
+    input_folder = ROOT_DIR / "assets" / "peanuts" / "datasets" / "separated" / "for-training" / "test" /"images"
 
     #input_folder = ROOT_DIR / "tmp" / "2025-02-14-train-separated" / "input"
     output_folder = ROOT_DIR / "tmp" / "2025-02-14-train-separated" / "output"
-    annotation_folder = ROOT_DIR / "assets" / "datasets" / "peanut" / "separated" / "for-training" / "test" /"labels"
+    annotation_folder = ROOT_DIR / "assets" / "peanuts" / "datasets" / "separated" / "for-training" / "test" /"labels"
     
     """
     predict_and_save(input_folder, output_folder, model_file, annotation_folder)

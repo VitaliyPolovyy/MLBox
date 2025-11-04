@@ -1,8 +1,9 @@
 import base64  # Pylint warning: Missing module docstring
 import os
+import traceback
 from io import BytesIO
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 import cv2
 import httpx
 import numpy as np
@@ -26,8 +27,11 @@ SERVICE_NAME = "Peanuts"
 app_logger = get_logger(ROOT_DIR)
 artifact_service = get_artifact_service(ROOT_DIR)
 
-# Load environment variables from the peanuts service directory
-load_dotenv(CURRENT_DIR / ".env")
+# Load environment variables - first from service directory, then from global .env.mlbox
+load_dotenv(CURRENT_DIR / ".env", override=False)  # Load local .env first if exists
+env_file = Path.home() / "credentials" / ".env.mlbox"
+if env_file.exists():
+    load_dotenv(env_file, override=False)  # Then load global credentials (override=False to keep local values)
 
 #os.environ["CURL_CA_BUNDLE"] = ""
 HF_TOKEN = os.getenv("HF_TOKEN")
@@ -95,12 +99,16 @@ def process_peanuts_images(
     )
 
     # prepare images for processing
+    app_logger.debug(SERVICE_NAME, f"Preparing images for processing: {len(input_images)}")
     try:
         preprocessed_results = preprocess_images_with_white_rectangle(input_images= input_images, target_width = 2000)
+        app_logger.debug(SERVICE_NAME, f"Preprocessed images: {len(preprocessed_results)}")
         preprocessed_images, pixels_per_mm_values = zip(*preprocessed_results)
+        app_logger.debug(SERVICE_NAME, f"Pixels per mm values: {pixels_per_mm_values}")
     except ValueError as e:
         # If A4 paper detection fails, use simple resizing instead
-        print(f"A4 paper detection failed: {e}. Using simple resizing.")
+        error_trace = traceback.format_exc()
+        app_logger.error(SERVICE_NAME, f"A4 paper detection failed: {e}. Using simple resizing.\n{error_trace}")
         preprocessed_images = []
         pixels_per_mm_values = []
         for image in input_images:
@@ -118,21 +126,57 @@ def process_peanuts_images(
             preprocessed_images, step_name="preprocessing", output_folder=artifact_service.get_service_dir(SERVICE_NAME) )
 
     # load weights file and detect peanuts on the images
-    cls_model_path = hf_hub_download(
-        repo_id=HF_PEANUT_CLS_REPO_ID, filename=HF_PEANUT_CLS_FILE, token=HF_TOKEN
-    )
-    classifier = YOLOPeanutsClassifier(cls_model_path)
+    app_logger.info(SERVICE_NAME, f"Starting classifier model download | repo_id={HF_PEANUT_CLS_REPO_ID} | file={HF_PEANUT_CLS_FILE}")
+    try:
+        cls_model_path = hf_hub_download(
+            repo_id=HF_PEANUT_CLS_REPO_ID, filename=HF_PEANUT_CLS_FILE, token=HF_TOKEN
+        )
+        app_logger.info(SERVICE_NAME, f"Classifier model downloaded: {cls_model_path}")
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        app_logger.error(SERVICE_NAME, f"Failed to download classifier model | repo_id={HF_PEANUT_CLS_REPO_ID} | error={str(e)}\n{error_trace}")
+        raise
+    
+    app_logger.info(SERVICE_NAME, f"Initializing classifier model: {cls_model_path}")
+    try:
+        classifier = YOLOPeanutsClassifier(cls_model_path)
+        app_logger.info(SERVICE_NAME, f"Classifier model initialized successfully")
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        app_logger.error(SERVICE_NAME, f"Failed to initialize classifier model | path={cls_model_path} | error={str(e)}\n{error_trace}")
+        raise
 
     # load weights file and detect peanuts on the images
-    det_model_path = hf_hub_download(
-        repo_id=HF_PEANUT_SEG_REPO_ID, filename=HF_PEANUT_SEG_FILE, token=HF_TOKEN
-    )
-
-    detector = YOLOPeanutsDetector(det_model_path)
-
-    sv_detections = detector.detect(
-        preprocessed_images, verbose=True, imgsz=1024, conf=0.6
-    )
+    app_logger.info(SERVICE_NAME, f"Starting detector model download | repo_id={HF_PEANUT_SEG_REPO_ID} | file={HF_PEANUT_SEG_FILE}")
+    try:
+        det_model_path = hf_hub_download(
+            repo_id=HF_PEANUT_SEG_REPO_ID, filename=HF_PEANUT_SEG_FILE, token=HF_TOKEN
+        )
+        app_logger.info(SERVICE_NAME, f"Detector model downloaded: {det_model_path}")
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        app_logger.error(SERVICE_NAME, f"Failed to download detector model | repo_id={HF_PEANUT_SEG_REPO_ID} | error={str(e)}\n{error_trace}")
+        raise
+    
+    app_logger.info(SERVICE_NAME, f"Initializing detector model: {det_model_path}")
+    try:
+        detector = YOLOPeanutsDetector(det_model_path)
+        app_logger.info(SERVICE_NAME, f"Detector model initialized successfully")
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        app_logger.error(SERVICE_NAME, f"Failed to initialize detector model | path={det_model_path} | error={str(e)}\n{error_trace}")
+        raise
+    
+    app_logger.info(SERVICE_NAME, f"Starting peanut detection | images_count={len(preprocessed_images)}")
+    try:
+        sv_detections = detector.detect(
+            preprocessed_images, verbose=True, imgsz=1024, conf=0.6
+        )
+        app_logger.info(SERVICE_NAME, f"Detection completed | detected_objects={sum(len(det.xyxy) for det in sv_detections)}")
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        app_logger.error(SERVICE_NAME, f"Detection failed | error={str(e)}\n{error_trace}")
+        raise
 
     if LOG_LEVEL == "DEBUG":
         bounding_boxes = [detection.xyxy for detection in sv_detections]
@@ -146,9 +190,11 @@ def process_peanuts_images(
         )
 
     # for each image and each peanut: crop peanut, fit elipse, classify, fill result
-    for input_image_filename, preprocessed_image, sv_detection, pixels_per_mm in zip(
-        input_images_filename, preprocessed_images, sv_detections, pixels_per_mm_values
+    app_logger.info(SERVICE_NAME, f"Processing {len(preprocessed_images)} images through classification pipeline")
+    for img_idx, (input_image_filename, preprocessed_image, sv_detection, pixels_per_mm) in enumerate(
+        zip(input_images_filename, preprocessed_images, sv_detections, pixels_per_mm_values), 1
     ):
+        app_logger.info(SERVICE_NAME, f"Processing image {img_idx}/{len(preprocessed_images)}: {input_image_filename} | detected_peanuts={len(sv_detection.xyxy)}")
 
         peanuts: List[OnePeanutProcessingResult] = []
         one_peanut_images: List[np.ndarray] = []
@@ -202,7 +248,14 @@ def process_peanuts_images(
 
             peanuts.append(peanut)
 
-        sv_cls = classifier.classify(one_peanut_images, verbose=False)
+        app_logger.info(SERVICE_NAME, f"Classifying {len(one_peanut_images)} detected peanuts for image: {input_image_filename}")
+        try:
+            sv_cls = classifier.classify(one_peanut_images, verbose=False)
+            app_logger.info(SERVICE_NAME, f"Classification completed for image: {input_image_filename}")
+        except Exception as e:
+            error_trace = traceback.format_exc()
+            app_logger.error(SERVICE_NAME, f"Classification failed for image: {input_image_filename} | error={str(e)}\n{error_trace}")
+            raise
 
         for index, classification in enumerate(sv_cls):
             peanuts[index].class_id = classification.class_id
@@ -405,16 +458,16 @@ def post_rest_request_to_client(
     )
     
     # Send the request
+    """
     response = httpx.post(endpoint, headers=headers, json={ "responseJson": peanut_response.to_json() }) # pylint: disable=no-member
 
     # Check response status
     if response.status_code == 200:
-        print("Successfully sent the result to ERP.")
+        app_logger.info(SERVICE_NAME, "Successfully sent the result to ERP.")
     else:
-        print(
-            f"Failed to send the result to ERP. Status code: {response.status_code}, Response: {response.text}"
-        )
-
+        app_logger.error(SERVICE_NAME, f"Failed to send the result to ERP. Status code: {response.status_code}, Response: {response.text}")
+        raise Exception(f"Failed to send the result to ERP. Status code: {response.status_code}, Response: {response.text}")
+    """
 
 def save_images_with_annotations(
     images: List[np.ndarray],
@@ -541,7 +594,7 @@ def test_process_requests(input_folder: Path, output_folder: Path):
 
     # Gather all image files from the input folder
     image_files = list(
-        input_folder.glob("*.*")
+        input_folder.glob("*.jpg")
     )  # You can filter by extension, e.g. "*.jpg" if needed
 
     # Prepare requests by reading each image
@@ -567,14 +620,14 @@ def test_process_requests(input_folder: Path, output_folder: Path):
 
 if __name__ == "__main__":
     
-    #output_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/preprocessed")
-    #input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/Experiments-photo-lab/2025-02-19-phones")
+    #output_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/peanuts/datasets/preprocessed")
+    #input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/peanuts/datasets/Experiments-photo-lab/2025-02-19-phones")
     #preprocessing_images_for_dataset(input_folder, output_folder)
 
 
 
 
-    input_folder = Path(r"/home/polovyi/projects/mlbox/assets/datasets/peanut/2025-10-08-test-measurement")
+    input_folder = Path(r"/home/polovyi/projects/mlbox/assets/peanuts/datasets/2025-10-30-vkf-anton")
     output_folder = input_folder / "output"
     
     

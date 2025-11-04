@@ -195,8 +195,16 @@ class VisionOCRProcessor(BaseOCRProcessor):
         
         return new_words
 
-    def process(self, input_image: Image.Image, confidence_threshold: float = 0.5, input_filename: str = None, json_vision_filename: str = None) -> OCRResult:
-        """Process image using Google Vision API OCR with bold detection and optional caching"""
+    def process(self, input_image: Image.Image, confidence_threshold: float = 0.5, input_filename: str = None, json_vision_filename: str = None, language_hints: list = None) -> OCRResult:
+        """Process image using Google Vision API OCR with bold detection and optional caching
+        
+        Args:
+            input_image: PIL Image to process
+            confidence_threshold: Minimum confidence threshold (not currently used)
+            input_filename: Original filename for artifact naming
+            json_vision_filename: Path to cached Vision API result (if exists)
+            language_hints: List of BCP-47 language codes that might appear in image (e.g., ["en", "uk", "ro"])
+        """
         results = []
         # Store filename stem for artifact naming
         if input_filename:
@@ -215,8 +223,14 @@ class VisionOCRProcessor(BaseOCRProcessor):
             # Create Vision API image object
             vision_api_image = vision.Image(content=self._image_to_bytes(input_image))
             
-            # Perform text detection
-            response = self.client.text_detection(image=vision_api_image)
+            # Create image context with language hints if provided
+            image_context = None
+            if language_hints:
+                image_context = vision.ImageContext(language_hints=language_hints)
+                app_logger.debug("ocr_processor", f"Using language hints: {language_hints}")
+            
+            # Perform text detection with language hints
+            response = self.client.text_detection(image=vision_api_image, image_context=image_context)
             
             # Handle API errors
             if response.error.message:
@@ -241,7 +255,7 @@ class VisionOCRProcessor(BaseOCRProcessor):
         ocr_result = OCRResult(
             text=''.join(word.text for word in words),
             confidence=vision_result.confidence,
-            language=vision_result.language.upper(),
+            language=vision_result.language.lower(),  # Keep BCP47 format (lowercase)
             words=words
         )
             
@@ -359,14 +373,14 @@ class VisionOCRProcessor(BaseOCRProcessor):
             
             # Bold detection: ratio between 1.0 and 1.5 indicates bold text
             is_bold = ratio_min <= bold_ratio < ratio_max
-            
+            """
             if LOG_LEVEL == "DEBUG":
                 artifact_service.save_artifact(
                     service=SERVICE_NAME,
                     file_name=f"{self.input_filename_stem}_Word_{word_text}_black_proc.jpg",
                     data=Image.fromarray(processed.astype(np.uint8) * 255)
                 )
-
+            
             if LOG_LEVEL == "DEBUG":
                 artifact_service.save_artifact(
                     service=SERVICE_NAME,
@@ -378,7 +392,7 @@ class VisionOCRProcessor(BaseOCRProcessor):
                     f"Word: '{word_text}' - Black orig: {black_orig}, height: {word_image.height} "
                     f"ratio_min: {ratio_min}, ratio_max: {ratio_max} "
                     f"Black proc: {black_proc}, Bold ratio: {bold_ratio:.4f}, Bold: {is_bold}")
-            
+            """
             return is_bold
             
         except Exception as e:

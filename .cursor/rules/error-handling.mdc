@@ -1,0 +1,54 @@
+---
+description: Fail-Fast Error Handling Pattern
+globs: ["**/*.py"]
+alwaysApply: true
+---
+
+# Error Handling Pattern - Fail-Fast Approach
+
+## Philosophy
+- Use "Fail-Fast" pattern: let exceptions bubble up naturally
+- Don't add defensive try-catch blocks in individual functions
+- Handle errors at workflow/orchestration level only
+- Functions should focus on pure business logic
+- Error handling is a separate concern (Single Responsibility Principle)
+
+## Examples
+
+### ❌ BAD: Defensive programming everywhere
+```python
+def detect_text_block_types_new(words):
+    if not words:
+        return default_value
+    try:
+        # logic
+    except Exception as e:
+        return default_value
+```
+
+### ✅ GOOD: Clean function, let it crash
+```python
+def detect_text_block_types_new(words):
+    # Pure business logic only
+    # Exceptions bubble up naturally
+    joined_text = " ".join([word.text for word in words])
+    # ... rest of logic
+```
+
+### ✅ GOOD: Handle at workflow level
+```python
+def process_labels(labels):
+    for label in labels:
+        try:
+            result = detect_text_block_types_new(words)
+        except Exception as e:
+            # Handle error with full context
+            logger.error(f"Failed to process {label.kmat}: {e}")
+```
+
+## Benefits
+- Better error context and debugging
+- Cleaner, more maintainable code
+- Follows SOLID principles
+- Production-ready pattern
+- Exceptions carry full context up the call stack

@@ -178,9 +178,9 @@ if __name__ == "__main__":
     #draw_contours_on_images(output_folder, output_folder / "masks")
 
     
-    #C:\My storage\Python projects\MLBox\assets\datasets\peanut\separated
-    input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/separated/all")
-    output_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/separated/for-training")
+    #C:\My storage\Python projects\MLBox\assets\peanuts\datasets\separated
+    input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/peanuts/datasets/separated/all")
+    output_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/peanuts/datasets/separated/for-training")
 
     split_dataset (in   put_folder, output_folder)
     

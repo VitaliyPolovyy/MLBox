@@ -8,6 +8,8 @@ Handles different output formats: interactive HTML viewers, comparison reports, 
 import json
 import html as html_module
 import re
+import base64
+from collections import defaultdict
 from typing import List
 from PIL import Image, ImageDraw
 
@@ -18,113 +20,260 @@ from mlbox.services.LabelGuard.datatypes import (
     RulesName,
     ValidationArtifacts
 )
-from mlbox.utils.lcs import Match
+from mlbox.utils.lcs import Match, highlight_matches_by_words_html
+
+
+# ============================================================================
+# RULE NAME TRANSLATIONS
+# ============================================================================
+
+# Ukrainian rule name translations
+RULE_NAMES_UK = {
+    RulesName.ETALON_MATCHING: "Перевірка відповідності тексту",
+    RulesName.ALLERGENS: "Алергени",
+    RulesName.NUMBERS_IN_INGRIDIENTS: "Числа в інгредієнтах"
+}
 
 
 # ============================================================================
 # TEXT HIGHLIGHTING FUNCTIONS
 # ============================================================================
+# Note: highlight_matches_by_words_html moved to mlbox.utils.lcs
 
-def highlight_matches_html(text: str, matches: List[Match], use_start_a: bool = False) -> str:
+
+# ============================================================================
+# PLAIN TEXT FORMATTING FUNCTIONS
+# ============================================================================
+
+def format_validation_details_as_text(
+    text_block,
+    check_results: List[RuleCheckResult]
+) -> str:
     """
-    Highlight matched text segments in green and unmatched segments in red.
+    Format validation details as clean plain text without extra empty lines.
     
     Args:
-        text: The text to highlight
-        matches: List of Match objects containing position information
-        use_start_a: If True, use start_a and len_a from matches, otherwise use start_b and len_b
+        text_block: The text block being validated
+        check_results: List of rule check results for this text block
         
     Returns:
-        HTML string with highlighted text
+        Plain text formatted validation details
     """
-    if not matches:
-        # No matches - entire text is unmatched (red)
-        escaped_text = html_module.escape(text)
-        return f'<span style="background-color: #ffcccc;">{escaped_text}</span>'
+    lines = []
     
-    # Sort matches by start position
-    if use_start_a:
-        sorted_matches = sorted(matches, key=lambda m: m.start_a)
-    else:
-        sorted_matches = sorted(matches, key=lambda m: m.start_b)
-    
-    result = []
-    pos = 0
-    
-    for match in sorted_matches:
-        if use_start_a:
-            start = match.start_a
-            length = match.len_a
-        else:
-            start = match.start_b
-            length = match.len_b
+    # Process each check result FIRST
+    for check_result in check_results:
+        if check_result.rule_name == RulesName.ETALON_MATCHING:
+            etalon = check_result.text_block.etalon_text if check_result.text_block else ''
+            score = check_result.score
+            passed = check_result.passed
+            score_expression = check_result.score_expression or ''
             
-        # Add unmatched text before this match (red background)
-        if start > pos:
-            unmatched_text = html_module.escape(text[pos:start])
-            result.append(f'<span style="background-color: #ffcccc;">{unmatched_text}</span>')
-        
-        # Add matched text (green background)
-        matched_text = html_module.escape(text[start:start + length])
-        result.append(f'<span style="background-color: #ccffcc;">{matched_text}</span>')
-        pos = start + length
+            total_words = len(etalon.split()) if etalon else 0
+            status_emoji = "✅" if passed else "❌"
+            
+            lines.append(f"{status_emoji} Перевірка відповідності тексту ({score:.0f}/100):")
+            lines.append("")
+            
+            if total_words > 0:
+                lines.append(f"score = {score:.0f} = {score_expression}")
+                lines.append("(100 - відсутніх слів / слів всього * 100)")
+                
+                if check_result.affected_words and len(check_result.affected_words) > 0:
+                    missing_words_text = ', '.join([word.text for word in check_result.affected_words])
+                    lines.append(f"відсутні слова: {missing_words_text}")
+            
+            lines.append("")
+            lines.append(f"Еталон:")
+            lines.append(etalon)
+            lines.append("=" * 22)
+            
+        elif check_result.rule_name == RulesName.ALLERGENS:
+            allergens = check_result.metadata.get('allergen_names', [])
+            expected = check_result.metadata.get('expected_count', 0)
+            actual_count = check_result.metadata.get('actual_count', 0)
+            passed = (actual_count == expected)
+            
+            status_emoji = "✅" if passed else "❌"
+            
+            lines.append(f"{status_emoji} Алергени")
+            lines.append(', '.join(allergens) if allergens else 'немає')
+            
+            if not passed:
+                lines.append(f"в наявності {actual_count} очікую {expected}")
+                
+        elif check_result.rule_name == RulesName.NUMBERS_IN_INGRIDIENTS:
+            missing = check_result.metadata.get('missing_numbers', [])
+            extra = check_result.metadata.get('extra_numbers', [])
+            passed = (not missing and not extra)
+            
+            status_emoji = "✅" if passed else "❌"
+            
+            lines.append(f"{status_emoji} Числа в інгредієнтах")
+            if missing:
+                lines.append(f"Відсутні: {', '.join(missing)}")
+            if extra:
+                lines.append(f"Зайві: {', '.join(extra)}")
+                
+        elif check_result.rule_name == RulesName.NUMBERS_IN_INGRIDIENTS:
+            # Import here to avoid circular dependency
+            from mlbox.services.LabelGuard.datatypes import NumbersCheckResult
+            
+            if isinstance(check_result, NumbersCheckResult):
+                lines.append("=" * 22)
+                status_emoji = "✅" if check_result.passed else "❌"
+                lines.append(f"{status_emoji} Числа:")
+                
+                for cat_result in check_result.category_results:
+                    missing = set(cat_result.reference_numbers) - set(cat_result.actual_numbers)
+                    extra = set(cat_result.actual_numbers) - set(cat_result.reference_numbers)
+                    
+                    # Format the category line
+                    actual_str = ', '.join(cat_result.actual_numbers) if cat_result.actual_numbers else '(порожньо)'
+                    
+                    if missing or extra:
+                        # Show errors in red
+                        error_parts = []
+                        if missing:
+                            error_parts.append(f"відсутні: {', '.join(sorted(missing))}")
+                        if extra:
+                            error_parts.append(f"зайві: {', '.join(sorted(extra))}")
+                        lines.append(f"{cat_result.category}: {actual_str} ({'; '.join(error_parts)})")
+                    else:
+                        lines.append(f"{cat_result.category}: {actual_str}")
     
-    # Add any remaining unmatched text (red background)
-    if pos < len(text):
-        remaining_text = html_module.escape(text[pos:])
-        result.append(f'<span style="background-color: #ffcccc;">{remaining_text}</span>')
+    # Add separator and header
+    lines.append("=" * 32)
+    lines.append(f"[{text_block.type.upper()}]")
     
-    return ''.join(result)
-
-
-def highlight_matches_by_words_html(text: str, matches: List[Match], use_start_a: bool = False) -> str:
-    """
-    Highlight matched text at WORD level (not character level).
-    Entire words are either green (fully matched) or red (partially/fully unmatched).
+    # Add the extracted text
+    lines.append("")
+    lines.append(text_block.text)
+    lines.append("")
     
-    Args:
-        text: The text to highlight
-        matches: List of Match objects containing position information
-        use_start_a: If True, use start_a and len_a from matches, otherwise use start_b and len_b
-        
-    Returns:
-        HTML string with word-level highlighted text
-    """
-    if not matches:
-        # No matches - entire text is unmatched (red)
-        escaped_text = html_module.escape(text)
-        return f'<span style="background-color: #ffcccc;">{escaped_text}</span>'
+    # Group sentences by category and display them
+    sentences_by_category = defaultdict(list)
+    if hasattr(text_block, 'sentences') and text_block.sentences:
+        for sentence in text_block.sentences:
+            sentences_by_category[sentence.category].append(sentence.text)
     
-    result = ""
-    start_pos = 0
-
-    for match in matches:
-        # Get the correct match
-        #  position based on use_start_a parameter
-        match_start = match.start_a if use_start_a else match.start_b
-        match_len = match.len_a if use_start_a else match.len_b
-        
-        # Add unmatched text (red background)
-        if start_pos < match_start:
-            unmatched = html_module.escape(text[start_pos:match_start])
-            result += f'<span style="background-color: #ffcccc;">{unmatched}</span>'
-        
-        # Add matched text (green background)
-        matched = html_module.escape(text[match_start:match_start + match_len])
-        result += f'<span style="background-color: #ccffcc;">{matched}</span>'
-        start_pos = match_start + match_len
-
-    # Add any remaining unmatched text (red background)
-    if start_pos < len(text):
-        remaining = html_module.escape(text[start_pos:])
-        result += f'<span style="background-color: #ffcccc;">{remaining}</span>'
+    # Display sentences grouped by category
+    if sentences_by_category:
+        for category, sentence_texts in sorted(sentences_by_category.items()):
+            combined_text = '. '.join(sentence_texts)
+            lines.append(f"{category}: {combined_text}")
     
-    return result
+    return '\n'.join(lines)
 
 
 # ============================================================================
 # VISUALIZATION FUNCTIONS
 # ============================================================================
+
+def generate_block_details_html(text_block, check_results: List[RuleCheckResult], is_error_block: bool = True) -> str:
+    """
+    Generate detailed HTML for a text block by concatenating pre-generated rule HTML.
+    
+    HTML is now generated in labelguard.py when rules are executed,
+    so this function just assembles the pieces.
+    
+    Args:
+        text_block: The TextBlock to generate details for
+        check_results: List of RuleCheckResult for this block (with html_details pre-generated)
+        is_error_block: If True, details sections will be collapsed by default. If False, open by default.
+        
+    Returns:
+        HTML string with formatted validation details
+    """
+    parts = []
+    
+    # Header with block index, type, and bounding box for debugging
+    parts.append(f"<div style='background-color: #f0f0f0; padding: 8px; margin-bottom: 10px; border-radius: 4px; font-weight: bold;'>")
+    parts.append(f"📋 Block #{text_block.index} | Type: {text_block.type} | Lang: {text_block.languages} | BBox: ({text_block.bbox[0]}, {text_block.bbox[1]}) - ({text_block.bbox[2]}, {text_block.bbox[3]})")
+    parts.append(f"</div>")
+    
+    # Text preview
+    text_preview = text_block.text[:50] + "..." if len(text_block.text) > 50 else text_block.text
+    text_preview = text_preview.replace('\n', ' ')
+    parts.append(f"<div style='margin-bottom:10px;'>\"{html_module.escape(text_preview)}\"</div>")
+    
+    # Add pre-generated HTML for each rule
+    for check_result in check_results:
+        if check_result.html_details:
+            # Wrap each rule in a filterable container
+            rule_type = check_result.rule_name.value
+            parts.append(f'<div class="rule-error" data-rule-{rule_type}>{check_result.html_details}</div>')
+    
+    # Add full extracted text from text block
+    # Always include full details section
+    parts.append("<hr style='margin: 4px 0; border: 0; border-top: 1px solid #ddd;'>")
+    # Details open by default for non-error blocks, collapsed for error blocks
+    open_attr = " open" if not is_error_block else ""
+    parts.append(f"<details style='margin-top:10px;'{open_attr}>")
+    parts.append("<summary style='cursor: pointer; font-weight: bold;'>Розпізнаний текст:</summary>")
+    parts.append(f"<div style='white-space: pre-wrap; font-family: monospace; background-color: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 5px;'>{html_module.escape(text_block.text)}</div>")
+    parts.append("</details>")
+    
+    # Add sentences with their types for category A blocks (ingredients)
+    # Check if block type is "A" (case-insensitive) and has sentences
+    block_type_str = str(text_block.type) if text_block.type else ""
+    block_type_match = block_type_str.upper() == "A" or block_type_str.lower() == "ingredients"
+    has_sentences = hasattr(text_block, 'sentences') and text_block.sentences
+    
+    # Show sentences with their types for category A blocks (ingredients)
+    if block_type_match and has_sentences:
+        parts.append("<hr style='margin: 4px 0; border: 0; border-top: 1px solid #ddd;'>")
+        # Details open by default for non-error blocks, collapsed for error blocks
+        open_attr = " open" if not is_error_block else ""
+        parts.append(f"<details style='margin-top:10px;'{open_attr}>")
+        parts.append("<summary style='cursor: pointer; font-weight: bold;'>Речення з типами:</summary>")
+        parts.append("<div style='margin-top: 5px;'>")
+        
+        # Group sentences by category
+        sentences_by_category = defaultdict(list)
+        sentences_without_category = []
+        
+        for sentence in text_block.sentences:
+            if hasattr(sentence, 'category') and sentence.category:
+                sentences_by_category[sentence.category].append(sentence)
+            else:
+                sentences_without_category.append(sentence)
+        
+        # Display sentences grouped by category - format as "CATEGORY: sentence1. sentence2. ..."
+        if sentences_by_category:
+            for category in sorted(sentences_by_category.keys()):
+                sentences = sentences_by_category[category]
+                # Join all sentences with the same category
+                sentence_texts = []
+                for sentence in sentences:
+                    sentence_text = html_module.escape(sentence.text) if hasattr(sentence, 'text') else str(sentence)
+                    sentence_texts.append(sentence_text)
+                joined_text = ' '.join(sentence_texts)
+                parts.append(f"<div style='margin-bottom: 8px;'>")
+                parts.append(f"<span style='font-weight: bold; color: #0066cc;'>{category}:</span> ")
+                parts.append(f"<span>{joined_text}</span>")
+                parts.append(f"</div>")
+        
+        # Show sentences without category if any
+        if sentences_without_category:
+            # Join all sentences without category
+            sentence_texts = []
+            for sentence in sentences_without_category:
+                sentence_text = html_module.escape(sentence.text) if hasattr(sentence, 'text') else str(sentence)
+                sentence_texts.append(sentence_text)
+            joined_text = ' '.join(sentence_texts)
+            parts.append(f"<div style='margin-bottom: 8px;'>")
+            parts.append(f"<span style='font-weight: bold; color: #0066cc;'>БЕЗ ТИПУ:</span> ")
+            parts.append(f"<span>{joined_text}</span>")
+            parts.append(f"</div>")
+        
+        if not sentences_by_category and not sentences_without_category:
+            parts.append("<div style='color: #666; font-style: italic;'>Речень не знайдено</div>")
+        
+        parts.append("</div>")
+        parts.append("</details>")
+    
+    return ''.join(parts)
 
 
 def generate_comparison_error_report(result: LabelProcessingResult) -> str:
@@ -264,7 +413,7 @@ def generate_comparison_error_report(result: LabelProcessingResult) -> str:
 
 def generate_interactive_error_viewer(
     label_processing_result: LabelProcessingResult,
-    error_overlay_image_path: str
+    error_overlay_image: Image.Image
 ) -> str:
     """Generate interactive HTML viewer for error visualization"""
     
@@ -280,86 +429,107 @@ def generate_interactive_error_viewer(
                 }
             text_block_errors[block_id]['errors'].append(error)
     
-    # Create highlights data for JavaScript
+    # Generate summary for whitespace click - FULL DETAILED HTML
+    # Count critical errors (passed=False)
+    critical_errors = [e for e in label_processing_result.rule_check_results if not e.passed]
+    
+    # STEP 1: Count errors by rule type
+    from collections import Counter
+    rule_counts = Counter([e.rule_name for e in critical_errors])
+    
+    if not critical_errors:
+        summary_html = "✅ Немає критичних помилок!"
+    else:
+        # Group failed errors by text block
+        failed_by_block = {}
+        for error in critical_errors:
+            if error.text_block:
+                block_id = id(error.text_block)
+                if block_id not in failed_by_block:
+                    failed_by_block[block_id] = {
+                        'text_block': error.text_block,
+                        'failed_rules': []
+                    }
+                failed_by_block[block_id]['failed_rules'].append(error)
+        
+        # Generate FULL detailed HTML for each block with failures
+        all_blocks_html = []
+        
+        for block_id, block_data in sorted(failed_by_block.items(), 
+                                           key=lambda x: x[1]['text_block'].index):
+            text_block = block_data['text_block']
+            check_results = block_data['failed_rules']  # Only failed rules
+
+            # Use helper function to generate HTML
+            # These are all error blocks since they're in failed_by_block
+            block_html = generate_block_details_html(text_block, check_results, is_error_block=True)
+
+            # Don't add data attributes to block wrapper anymore (individual errors have them)
+            block_html = f'<div class="error-block" style="margin-bottom: 20px;">{block_html}</div>'
+
+            all_blocks_html.append(block_html)
+        
+        # Add error count at the top and separator line before details
+        error_count = len(critical_errors)
+        passed_count = len([e for e in label_processing_result.rule_check_results if e.passed])
+        blocks_content = f'<hr style="margin: 10px 0; border: 0; border-top: 6px solid #000;">'.join(all_blocks_html)
+        separator_hr = '<hr id="error-separator" style="margin: 10px 0; border: 0; border-top: 6px solid #000;">' if all_blocks_html else ''
+        summary_html = f'<div style="font-weight: bold; font-size: 22px; margin-bottom: 5px; color: #d00;">❌ Критичних помилок - {error_count}</div><div style="font-weight: bold; font-size: 22px; margin-bottom: 15px;">✅ Всього перевірок - {passed_count}</div>{separator_hr}{blocks_content}'
+    
+    # Create highlights data for JavaScript (for all blocks with validation results)
+    # Sort by block index to ensure consistent order
+    def sort_key(item):
+        """Sort function that handles mixed string indices like '0', '1', '0_1', '0_2'"""
+        index = item[1]['text_block'].index
+        # Convert to string first, then split by underscore and convert to integers for proper sorting
+        index_str = str(index)
+        parts = index_str.split('_')
+        return [int(part) for part in parts]
+    
     highlights = []
-    for block_id, block_data in text_block_errors.items():
+    for block_id, block_data in sorted(text_block_errors.items(), key=sort_key):
         text_block = block_data['text_block']
         check_results = block_data['errors']
         
-        # Start with block info at the top
-        combined_details = []
-        combined_details.append(f"<div style='margin-bottom:15px;'><strong>[{text_block.type.upper()}]</strong></div>")
-        combined_details.append(f"<div style='margin-bottom:20px; padding:10px; background-color:#f5f5f5; border-radius:4px;'>{html_module.escape(text_block.text)}</div>")
-        combined_details.append("<hr>")
+        # Determine if this block is an error block (has any failed checks)
+        has_error = any(not result.passed for result in check_results)
         
-        # Generate formatted message from rule check results
-        for check_result in check_results:
-            # Add rule-specific details from metadata
-            if check_result.rule_name == RulesName.ETALON_MATCHING:
-                # Read from text_block (already linked in check_result)
-                etalon = check_result.text_block.etalon_text if check_result.text_block else ''
-                actual = check_result.text_block.text.replace("\n", " ") if check_result.text_block else ''
-                lcs_matches = check_result.text_block.lcs_results if check_result.text_block else []
-                
-                # Get score from check_result (calculated in labelguard.py)
-                score = check_result.score
-                passed = check_result.passed
-                score_expression = check_result.score_expression or ''
-                
-                # Calculate for display (can derive from existing data)
-                total_words = len(etalon.split()) if etalon else 0
-                missing_words = len(check_result.affected_words) if check_result.affected_words else 0
-                
-                status_emoji = "✅" if passed else "❌"
-                
-                # Highlight etalon text: green = exists in actual, red = missing from actual
-                # use_start_a=False because etalon is parameter B in LCS matching
-                etalon_highlighted = highlight_matches_by_words_html(etalon, lcs_matches, use_start_a=False) if etalon else ''
-                
-                combined_details.append(f"<div style='margin-top:15px;'><strong>{status_emoji} Перевірка відповідності тексту ({score:.0f}/100):</strong></div>")
-                
-                # Show score calculation formula
-                if total_words > 0:
-                    combined_details.append(f"<div style='margin-top:5px; font-size:0.9em; color:#666;'>score = 100 - відсутніх слів / слів всього * 100</div>")
-                    combined_details.append(f"<div style='font-size:0.9em; color:#666;'>{score:.0f} = {score_expression}</div>")
-                
-                combined_details.append(f"<div style='margin-top:10px;'><strong>Еталон:</strong><br>{etalon_highlighted}</div>")
-                
-            elif check_result.rule_name == RulesName.ALLERGENS:
-                allergens = check_result.metadata.get('allergen_names', [])
-                expected = check_result.metadata.get('expected_count', 0)
-                actual_count = check_result.metadata.get('actual_count', 0)
-                passed = (actual_count == expected)
-                
-                status_emoji = "✅" if passed else "❌"
-                
-                combined_details.append(f"<div style='margin-top:15px;'><strong>{status_emoji} Алергени</strong></div>")
-                combined_details.append(f"<div style='margin-top:5px;'>{', '.join(allergens) if allergens else 'немає'}</div>")
-                
-                if not passed:
-                    combined_details.append(f"<div style='margin-top:5px; color:#d00;'>в наявності {actual_count} очікую {expected}</div>")
-                    
-            elif check_result.rule_name == RulesName.NUMBERS_IN_INGRIDIENTS:
-                missing = check_result.metadata.get('missing_numbers', [])
-                extra = check_result.metadata.get('extra_numbers', [])
-                passed = (not missing and not extra)
-                
-                status_emoji = "✅" if passed else "❌"
-                
-                combined_details.append(f"<div style='margin-top:15px;'><strong>{status_emoji} Числа в інгредієнтах</strong></div>")
-                if missing:
-                    combined_details.append(f"<div style='margin-top:5px;'><strong>Відсутні:</strong> {', '.join(missing)}</div>")
-                if extra:
-                    combined_details.append(f"<div style='margin-top:5px;'><strong>Зайві:</strong> {', '.join(extra)}</div>")
-        
+        # Add highlight for all blocks (both passed and failed)
         highlights.append({
             'x1': text_block.bbox[0],
             'y1': text_block.bbox[1], 
             'x2': text_block.bbox[2],
             'y2': text_block.bbox[3],
             'type': 'validation_result',
-            'message': '<br>'.join(combined_details)
+            'block_index': text_block.index,  # Add block index for debugging
+            'block_type': text_block.type,    # Add block type for debugging
+            'message': generate_block_details_html(text_block, check_results, is_error_block=has_error)
         })
+    
+    # Convert PIL Image to base64
+    from io import BytesIO
+    
+    try:
+        # Convert image to bytes
+        img_buffer = BytesIO()
+        
+        # Ensure image is in RGB mode for JPEG
+        if error_overlay_image.mode in ('RGBA', 'LA', 'P'):
+            rgb_image = Image.new('RGB', error_overlay_image.size, (255, 255, 255))
+            if error_overlay_image.mode == 'P':
+                error_overlay_image = error_overlay_image.convert('RGBA')
+            if error_overlay_image.mode in ('RGBA', 'LA'):
+                alpha_channel = error_overlay_image.split()[-1] if error_overlay_image.mode == 'RGBA' else error_overlay_image.split()[1]
+                rgb_image.paste(error_overlay_image, mask=alpha_channel)
+            error_overlay_image = rgb_image
+        
+        # Save to buffer as JPEG
+        error_overlay_image.save(img_buffer, format='JPEG', quality=95)
+        img_data = img_buffer.getvalue()
+        img_base64 = base64.b64encode(img_data).decode('utf-8')
+        img_data_uri = f'data:image/jpeg;base64,{img_base64}'
+    except Exception as e:
+        raise RuntimeError(f"Failed to encode image: {e}")
     
     # Generate HTML content
     html_content = f"""<!DOCTYPE html>
@@ -368,17 +538,58 @@ def generate_interactive_error_viewer(
 <meta charset="UTF-8">
 <style>
   body {{ display: flex; height: 100vh; margin: 0; overflow: hidden; }}
-  #imagePanel {{ flex: 2; position: relative; overflow: hidden; border-right: 1px solid #ccc; cursor: grab; }}
+  #imagePanel {{ flex: 1; position: relative; overflow: hidden; border-right: 1px solid #ccc; cursor: grab; padding: 25px; box-sizing: border-box; }}
   #messagePanel {{ flex: 1; padding: 10px; overflow-y: auto; }}
   canvas {{ display: block; }}
+  #debugInfo {{
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    background: rgba(0,0,0,0.7);
+    color: #0f0;
+    padding: 8px;
+    font-family: monospace;
+    font-size: 12px;
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 1000;
+    white-space: pre;
+  }}
+  #filterPanel {{
+    font-size: 18px;
+    font-family: inherit;
+    margin-bottom: 22px;
+  }}
+  #filterPanel label {{
+    display: inline-block;
+    margin-right: 18px;
+    margin-bottom: 6px;
+    cursor: pointer;
+  }}
+  #filterPanel label:hover {{
+    color: #054aad;
+  }}
+  .rule-count {{
+    font-weight: 600;
+  }}
+  .rule-count.has-errors {{
+    color: #d00;
+  }}
+  .rule-count.no-errors {{
+    color: #888;
+  }}
 </style>
 </head>
 <body>
 
 <div id="imagePanel">
+  <div id="debugInfo">Hover over blocks to see info</div>
   <canvas id="labelCanvas"></canvas>
 </div>
 <div id="messagePanel">
+  <div id="filterPanel">
+    {''.join([f'<label><input type="checkbox" class="rule-filter" value="{rule.value}" checked style="transform: scale(1.2); vertical-align: middle; margin-right: 6px;"> {name} <span class="rule-count {"has-errors" if rule_counts.get(rule, 0) > 0 else "no-errors"}">({rule_counts.get(rule, 0)})</span></label>' for rule, name in RULE_NAMES_UK.items()])}
+  </div>
   <div id="msgContent">Click on a red rectangle to see error details</div>
 </div>
 
@@ -386,12 +597,22 @@ def generate_interactive_error_viewer(
 const canvas = document.getElementById('labelCanvas');
 const ctx = canvas.getContext('2d');
 const msgDiv = document.getElementById('msgContent');
+const debugInfo = document.getElementById('debugInfo');
 
 const img = new Image();
-img.src = '{error_overlay_image_path}';
+img.src = '{img_data_uri}';
 
 // Error highlighting data
 const highlights = {json.dumps(highlights, indent=2)};
+
+// Summary for whitespace clicks
+const summary = {json.dumps(summary_html)};
+
+// Rule display names mapping
+const RULE_DISPLAY_NAMES = {json.dumps({k.value: v for k, v in RULE_NAMES_UK.items()}, ensure_ascii=False)};
+
+// Filter state - all rule types enabled by default
+let enabledRuleTypes = new Set(["etalon", "allergens", "numbers"]);
 
 let scale = 1;
 let offsetX = 0, offsetY = 0;
@@ -400,7 +621,22 @@ let isDragging = false, startX = 0, startY = 0;
 img.onload = () => {{
   canvas.width = img.width;
   canvas.height = img.height;
+  
+  // Calculate initial scale to fit entire image in viewport
+  const panel = document.getElementById('imagePanel');
+  const scaleX = panel.clientWidth / img.width;
+  const scaleY = panel.clientHeight / img.height;
+  scale = Math.min(scaleX, scaleY, 1); // Don't scale up, only down if needed
+  
+  // Center the image
+  offsetX = (panel.clientWidth - img.width * scale) / 2;
+  offsetY = (panel.clientHeight - img.height * scale) / 2;
+  
   drawCanvas();
+  // Show summary by default
+  msgDiv.innerHTML = summary;
+  // Initialize filtering after summary is loaded
+  setTimeout(initializeFiltering, 100);
 }};
 
 function drawCanvas() {{
@@ -409,24 +645,130 @@ function drawCanvas() {{
   ctx.translate(offsetX, offsetY);
   ctx.scale(scale, scale);
   ctx.drawImage(img, 0, 0);
-  highlights.forEach(h => {{
-    ctx.strokeStyle = 'red';
-    ctx.lineWidth = 2 / scale;
-    ctx.strokeRect(h.x1, h.y1, h.x2-h.x1, h.y2-h.y1);
-  }});
   ctx.restore();
 }}
 
-// Click to show message
+function initializeFiltering() {{
+  const filterPanel = document.getElementById('filterPanel');
+  if (!filterPanel) return;
+
+  // Add event listeners to checkboxes
+  filterPanel.addEventListener('change', function(e) {{
+    if (e.target.classList.contains('rule-filter')) {{
+      const ruleValue = e.target.value;
+      if (e.target.checked) {{
+        enabledRuleTypes.add(ruleValue);
+      }} else {{
+        enabledRuleTypes.delete(ruleValue);
+      }}
+      updateFilteredSummary();
+    }}
+  }});
+
+  // Initial filtering update - all enabled by default, so all blocks show
+  setTimeout(updateFilteredSummary, 500);
+}}
+
+function updateFilteredSummary() {{
+  // Target individual rule errors instead of entire blocks
+  const ruleErrors = document.querySelectorAll('.rule-error');
+  
+  ruleErrors.forEach(ruleDiv => {{
+    let shouldShow = false;
+    for (const ruleType of enabledRuleTypes) {{
+      if (ruleDiv.hasAttribute(`data-rule-${{ruleType}}`)) {{
+        shouldShow = true;
+        break;
+      }}
+    }}
+    ruleDiv.style.display = shouldShow ? '' : 'none';
+  }});
+
+  // Hide entire blocks if they have no visible errors
+  const errorBlocks = document.querySelectorAll('.error-block');
+  let visibleBlockCount = 0;
+  errorBlocks.forEach(block => {{
+    const visibleErrors = block.querySelectorAll('.rule-error:not([style*="display: none"])');
+    if (visibleErrors.length === 0) {{
+      block.style.display = 'none';
+    }} else {{
+      block.style.display = '';
+      visibleBlockCount++;
+    }}
+  }});
+
+  // Hide separators between blocks that are adjacent to hidden blocks
+  const allBlocks = Array.from(document.querySelectorAll('.error-block'));
+  const allSeparators = Array.from(document.querySelectorAll('.error-block')).flatMap(block => {{
+    const prev = block.previousElementSibling;
+    const next = block.nextElementSibling;
+    const separators = [];
+    if (prev && prev.tagName === 'HR' && !prev.id) {{  // Don't include the main separator
+      separators.push(prev);
+    }}
+    if (next && next.tagName === 'HR') {{
+      separators.push(next);
+    }}
+    return separators;
+  }});
+  
+  // Remove duplicates
+  const uniqueSeparators = [...new Set(allSeparators)];
+  
+  uniqueSeparators.forEach(separator => {{
+    const prevBlock = separator.previousElementSibling;
+    const nextBlock = separator.nextElementSibling;
+    const prevIsHidden = prevBlock && prevBlock.classList.contains('error-block') && prevBlock.style.display === 'none';
+    const nextIsHidden = nextBlock && nextBlock.classList.contains('error-block') && nextBlock.style.display === 'none';
+    
+    // Hide separator if either adjacent block is hidden
+    if (prevIsHidden || nextIsHidden) {{
+      separator.style.display = 'none';
+    }} else {{
+      separator.style.display = '';
+    }}
+  }});
+
+  // Hide main separator if no blocks are visible
+  const mainSeparator = document.getElementById('error-separator');
+  if (mainSeparator) {{
+    mainSeparator.style.display = visibleBlockCount > 0 ? '' : 'none';
+  }}
+
+  // Checkbox counts are static (show total counts), don't update with filtering
+}}
+
+// Click to show message or summary
 canvas.addEventListener('click', e => {{
   const x = (e.offsetX - offsetX) / scale;
   const y = (e.offsetY - offsetY) / scale;
-  const hit = highlights.find(h => x>=h.x1 && x<=h.x2 && y>=h.y1 && y<=h.y2);
-  if(hit) msgDiv.innerHTML = `
-  <div style="margin-bottom:10px;">
-    <span>${{hit.message}}</span>
-  </div>
-`;
+  
+  // Debug: log click coordinates
+  console.log('Click at canvas coords:', {{x: e.offsetX, y: e.offsetY}});
+  console.log('Click at image coords:', {{x: x.toFixed(2), y: y.toFixed(2)}});
+  console.log('Transform:', {{scale: scale.toFixed(3), offsetX: offsetX.toFixed(2), offsetY: offsetY.toFixed(2)}});
+  
+  // Find all matching blocks (in case of overlaps)
+  const matches = highlights.filter(h => x>=h.x1 && x<=h.x2 && y>=h.y1 && y<=h.y2);
+  
+  if(matches.length > 0) {{
+    // Debug: log all matches
+    console.log('Found', matches.length, 'matching blocks:');
+    matches.forEach(m => {{
+      console.log('  Block', m.block_index, ':', m.block_type, 'bbox:', [m.x1, m.y1, m.x2, m.y2]);
+    }});
+    
+    // Use the first match (or last if you want topmost)
+    const hit = matches[0];
+    console.log('Showing details for Block', hit.block_index);
+    
+    // Clicked on bounding box - show detailed view
+    msgDiv.innerHTML = `<div style="margin-bottom:10px;"><span>${{hit.message}}</span></div>`;
+  }} else {{
+    console.log('No block hit - showing summary');
+    // Clicked on whitespace - show summary
+    msgDiv.innerHTML = summary;
+  }}
 }});
 
 // Zoom with Ctrl + wheel
@@ -457,6 +799,20 @@ canvas.addEventListener('mousemove', e => {{
     offsetX = e.clientX - startX;
     offsetY = e.clientY - startY;
     drawCanvas();
+  }} else {{
+    // Update debug info with current hover position
+    const x = (e.offsetX - offsetX) / scale;
+    const y = (e.offsetY - offsetY) / scale;
+    const matches = highlights.filter(h => x>=h.x1 && x<=h.x2 && y>=h.y1 && y<=h.y2);
+    
+    if(matches.length > 0) {{
+      const blockInfos = matches.map(m => `Block #${{m.block_index}} [${{m.block_type}}]`).join(', ');
+      debugInfo.textContent = `Hovering: ${{blockInfos}}\\nMouse: (${{x.toFixed(0)}}, ${{y.toFixed(0)}})\\nBlocks at cursor: ${{matches.length}}`;
+      debugInfo.style.display = 'block';
+    }} else {{
+      debugInfo.textContent = `Mouse: (${{x.toFixed(0)}}, ${{y.toFixed(0)}})\\nNo block here`;
+      debugInfo.style.display = 'block';
+    }}
   }}
 }});
 
@@ -493,7 +849,7 @@ def generate_error_overlay_image(
     try:
         from PIL import ImageFont
         try:
-            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20)
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 32)
         except:
             try:
                 font = ImageFont.load_default()
@@ -505,44 +861,10 @@ def generate_error_overlay_image(
     # Track which text blocks have been labeled
     labeled_blocks = set()
     
-    # Process all visual markers from all rule check results
+    # Process all visual markers (only highlights, outlines are drawn separately)
     for check_result in rule_check_results:
         for marker in check_result.visual_markers:
-            if marker.type == "outline":
-                # Draw outline/border
-                draw.rectangle(
-                    marker.bbox,
-                    outline=marker.color,
-                    width=marker.width or 2
-                )
-                
-                # Label the text block with its index (only once per block)
-                if check_result.text_block and id(check_result.text_block) not in labeled_blocks:
-                    labeled_blocks.add(id(check_result.text_block))
-                    x1, y1, _, _ = marker.bbox
-                    text = f"{check_result.text_block.index}"
-                    
-                    if font:
-                        bbox = draw.textbbox((0, 0), text, font=font)
-                        text_width = bbox[2] - bbox[0]
-                        text_height = bbox[3] - bbox[1]
-                    else:
-                        text_width = len(text) * 6
-                        text_height = 12
-                    
-                    text_x, text_y = x1 + 5, y1 + 5
-                    draw.rectangle(
-                        [text_x - 2, text_y - 2, text_x + text_width + 2, text_y + text_height + 2],
-                        fill=(255, 255, 255, 200),
-                        outline=marker.color
-                    )
-                    
-                    if font:
-                        draw.text((text_x, text_y), text, fill=marker.color, font=font)
-                    else:
-                        draw.text((text_x, text_y), text, fill=marker.color)
-                        
-            elif marker.type == "highlight":
+            if marker.type == "highlight":
                 # Draw semi-transparent highlight
                 x1, y1, x2, y2 = marker.bbox
                 
@@ -562,6 +884,56 @@ def generate_error_overlay_image(
                 except Exception as e:
                     # If crop fails (bbox out of bounds), skip this marker
                     app_logger.warning(SERVICE_NAME, f"Failed to apply highlight marker: {e}")
+    
+    # Draw text block outlines based on pass/fail status
+    from collections import defaultdict
+    block_results = defaultdict(list)
+    
+    for check_result in rule_check_results:
+        if check_result.text_block:
+            block_id = id(check_result.text_block)
+            block_results[block_id].append(check_result)
+    
+    # Draw outlines: red for any failure, green for all passed
+    for block_id, results in block_results.items():
+        text_block = results[0].text_block
+        any_failed = any(not r.passed for r in results)
+        
+        # Determine outline color
+        if any_failed:
+            outline_color = (255, 0, 0)  # Red for any failure
+        else:
+            outline_color = (0, 200, 0)  # Green for all passed
+        
+        # Draw outline
+        draw.rectangle(
+            text_block.bbox,
+            outline=outline_color,
+            width=3
+        )
+        
+        # Label the text block with its index
+        labeled_blocks.add(block_id)
+        x1, y1, x2, y2 = text_block.bbox
+        text = f"{text_block.index}"
+        
+        if font:
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+        else:
+            text_width = len(text) * 10
+            text_height = 16
+        
+        # Position at bottom-right corner (with small padding from edges)
+        text_x = x2 - text_width - 5
+        text_y = y2 - text_height - 5
+        
+        # Draw text without background (transparent)
+        if font:
+            draw.text((text_x, text_y), text, fill=outline_color, font=font)
+        else:
+            draw.text((text_x, text_y), text, fill=outline_color)
     
     return overlay_image
 
@@ -605,14 +977,14 @@ def generate_validation_report(
     
     # Step 3: Generate HTML viewer based on format and determine filename
     if output_format == "interactive_viewer":
-        html_content = generate_interactive_error_viewer(label_processing_result, image_filename)
+        html_content = generate_interactive_error_viewer(label_processing_result, error_overlay_image)
         html_filename = f"{base_name}_interactive_viewer.html"
     elif output_format == "comparison_report":
         html_content = generate_comparison_error_report(label_processing_result)
         html_filename = f"{base_name}_comparison_report.html"
     elif output_format == "both":
         # For "both", return interactive viewer as main report
-        html_content = generate_interactive_error_viewer(label_processing_result, image_filename)
+        html_content = generate_interactive_error_viewer(label_processing_result, error_overlay_image)
         html_filename = f"{base_name}_interactive_viewer.html"
         # Could add comparison as second HTML in future
     else:
@@ -624,4 +996,3 @@ def generate_validation_report(
         html_filename=html_filename,
         images=[(image_filename, error_overlay_image)]
     )
-

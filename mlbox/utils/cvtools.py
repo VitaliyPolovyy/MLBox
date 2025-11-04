@@ -520,7 +520,7 @@ def preprocess_images_with_white_rectangle(
 
 if __name__ == "__main__":
     
-    input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/datasets/peanut/tests")
+    input_folder = Path(r"/mnt/c/My storage/Python projects/MLBox/assets/peanuts/datasets/tests")
     specific_file = "POCO_5200_10_WHITE.jpg"
     image_path = input_folder / specific_file
 

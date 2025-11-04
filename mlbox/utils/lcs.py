@@ -21,7 +21,7 @@ class Match:
     
 
 
-def apply_ignorable_symbols(matches: List[Match], ignorable_symbols: str, ref: str, label: str) -> List[Match]:
+def apply_ignorable_symbols(matches: List[Match], ignorable_symbols: str, text_a: str, text_b: str) -> List[Match]:
     """
     Extend matches to include adjacent ignorable symbols (by 1 character).
     Checks the symbol before start and after end, and extends if it's ignorable.
@@ -42,26 +42,30 @@ def apply_ignorable_symbols(matches: List[Match], ignorable_symbols: str, ref: s
         end_a = match.start_a + match.len_a
         start_b = match.start_b
         end_b = match.start_b + match.len_b
+        symbol = ''
+        text = match.text
         
         # Check and extend by 1 before start in ref
-        if start_a > 0 and ref[start_a - 1] in ignorable_symbols:
-            start_a -= 1
-        
-        # Check and extend by 1 before start in label
-        if start_b > 0 and label[start_b - 1] in ignorable_symbols:
-            start_b -= 1
-        
+        if start_a > 0 and text_a[start_a - 1] in ignorable_symbols:
+            symbol = text_a[start_a - 1]
+            if start_b > 0 and text_b[start_b - 1] == symbol: 
+                start_b -= 1
+                start_a -= 1
+                text = symbol + text
+                
+        symbol = ''
         # Check and extend by 1 after end in ref
-        if end_a < len(ref) and ref[end_a] in ignorable_symbols:
-            end_a += 1
-        
-        # Check and extend by 1 after end in label
-        if end_b < len(label) and label[end_b] in ignorable_symbols:
-            end_b += 1
-        
+        if end_a < len(text_a) and text_a[end_a] in ignorable_symbols:
+            symbol = text_a[end_a]
+            if end_b < len(text_b) and text_b[end_b] == symbol: 
+                end_b += 1
+                end_a += 1
+                text = text + symbol
+
+
         # Create extended match
         extended_matches.append(Match(
-            text=ref[start_a:end_a],
+            text=text,
             len_a=end_a - start_a,
             len_b=end_b - start_b,
             start_a=start_a,
@@ -116,8 +120,8 @@ def filter_maximal_matches(matches: List[Match]) -> List[Match]:
 
 
 def all_common_substrings_by_words(
-    ref: str, 
-    label: str, 
+    text_a: str, 
+    text_b: str, 
     min_length_words=2, 
     maximal_only=False,
     ignorable_symbols: str = None
@@ -143,8 +147,8 @@ def all_common_substrings_by_words(
             positions.append(m.start())
         return words, positions
 
-    ref_words, ref_pos = tokenize_with_positions(ref)
-    label_words, label_pos = tokenize_with_positions(label)
+    ref_words, ref_pos = tokenize_with_positions(text_a)
+    label_words, label_pos = tokenize_with_positions(text_b)
 
     class WordSuffixAutomaton:
         def __init__(self):
@@ -218,7 +222,7 @@ def all_common_substrings_by_words(
                 end_a = ref_pos[pos_ref_word + l - 1] + len(ref_words[pos_ref_word + l - 1])
                 start_b = label_pos[i - l + 1]
                 end_b = label_pos[i] + len(label_words[i])
-                text = ref[start_a:end_a]
+                text = text_a[start_a:end_a]
                 res.append(Match(
                     text=text,
                     len_a=end_a - start_a,
@@ -235,8 +239,54 @@ def all_common_substrings_by_words(
     result = filter_maximal_matches(res)
 
     if ignorable_symbols:
-        result = apply_ignorable_symbols(result, ignorable_symbols, ref, label)
+        result = apply_ignorable_symbols(result, ignorable_symbols, text_a, text_b)
 
+    
+    return result
+
+
+def highlight_matches_by_words_html(text: str, matches: List[Match], use_start_a: bool = False) -> str:
+    """
+    Highlight matched text at WORD level (not character level).
+    Entire words are either green (fully matched) or red (partially/fully unmatched).
+    
+    Args:
+        text: The text to highlight
+        matches: List of Match objects containing position information
+        use_start_a: If True, use start_a and len_a from matches, otherwise use start_b and len_b
+        
+    Returns:
+        HTML string with word-level highlighted text
+    """
+    import html
+    
+    if not matches:
+        # No matches - entire text is unmatched (red)
+        escaped_text = html.escape(text)
+        return f'<span style="background-color: #ffcccc;">{escaped_text}</span>'
+    
+    result = ""
+    start_pos = 0
+
+    for match in matches:
+        # Get the correct match position based on use_start_a parameter
+        match_start = match.start_a if use_start_a else match.start_b
+        match_len = match.len_a if use_start_a else match.len_b
+        
+        # Add unmatched text (red background)
+        if start_pos < match_start:
+            unmatched = html.escape(text[start_pos:match_start])
+            result += f'<span style="background-color: #ffcccc;">{unmatched}</span>'
+        
+        # Add matched text (green background)
+        matched = html.escape(text[match_start:match_start + match_len])
+        result += f'<span style="background-color: #ccffcc;">{matched}</span>'
+        start_pos = match_start + match_len
+
+    # Add any remaining unmatched text (red background)
+    if start_pos < len(text):
+        remaining = html.escape(text[start_pos:])
+        result += f'<span style="background-color: #ffcccc;">{remaining}</span>'
     
     return result
 

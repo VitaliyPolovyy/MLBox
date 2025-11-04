@@ -1,0 +1,22 @@
+{
+  "A": {
+    "name": "ingredients",
+    "description": "starts with a language marker (e.g., '(UA)', '(RO)') + product name + Ingredient list (keywords: 'Склад', 'Съставки', 'Ingrediente', 'Składniki', 'Құрамы', 'ინგრედიენტები', 'Состав', 'Ingredients', 'Composition') + allergen statements + storage info (°C, humidity) + importer name, address, contact info (keywords: 'Importator', 'Importer') + Country of manufacture (Keywords: 'Jara de origine: ', 'Wyprodukowano w: ', 'Земја на потекло '). Each language version of this category is a separate block."
+  },
+  "B": {
+    "name": "manufacturer",
+    "description": "Manufacturer info — header like 'Виробник, місцезнаходження', 'Изготовитель, место нахождения', 'Producător', or 'Manufacturer', followed by company name, address, and contacts (phone, website, email).Usually contains several languages describing the same manufacturer. Excludes importer or country-of-origin text. It is not about importer!"
+  },
+  "C": {
+    "name": "manufacturing_date",
+    "description": "Text contains production date, expiry date, or best before date. Keywords: 'Дата виготовлення', 'Дата изготовления', 'Жасалған күні', 'Data fabricatiei', 'Data wyprodukowania', 'Датата на производство', 'Краще спожити до', 'Годен до', 'A se consuma, de preferință, înainte de', 'Дейін қолдану', 'Най-добър до', 'Najlepiej spożyć przed', 'Best before', 'Use by', 'Expiry date', 'Production date'"
+  },
+  "D": {
+    "name": "nutrition",
+    "description": "Text contains nutritional information, nutritional values, or nutritional declaration. Keywords: 'Поживна цінність', 'Пищевая ценность', 'тағамдық құндылығы', 'Declaratie nutritionala', 'Хранителни стойности', 'Wartość odżywcza', 'Енергетична цінність', 'Энергетическая ценность', 'Қуаттық құндылығы', 'Valoare energetica', 'Енергийна стойност', 'Wartość energetyczna', 'ენერგეტიკული ღირებულება', 'Жири', 'Жиры', 'Майлар', 'Grăsimi', 'Мазнини', 'Tłuszcz', 'Вуглеводи', 'Углеводы', 'Көмірсулар', 'Glucide', 'Węglowodany', 'Білки', 'Белки', 'Нәруыздар', 'Proteine', 'Белтъци', 'Białko', 'Сіль', 'Соль', 'Тұз', 'Sare', 'Сол', 'Sól', 'kcal', 'kJ', 'Nutrition facts', 'Nutritional information'"
+  },
+  "E": {
+    "name": "other",
+    "description": "Text does not fit the above categories"
+  }
+}

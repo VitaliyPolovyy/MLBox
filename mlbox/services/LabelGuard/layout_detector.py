@@ -20,7 +20,7 @@ class LayoutTextBlock:
     image_crop: Image.Image
     score: float = 0.0
     label: str = "text"
-    index: int = 0
+    index: str = "0"
 
 
 class LayoutDetector:
@@ -31,7 +31,8 @@ class LayoutDetector:
     
     def extract_blocks(self, image_input: Image.Image, 
                       max_loops: int = 5, 
-                      score_thresh: float = 0.4) -> List[LayoutTextBlock]:
+                      score_thresh: float = 0.4,
+                      overlap_thresh: float = 0.3) -> List[LayoutTextBlock]:
         """
         Extract text blocks from image using iterative detection and removal.
         
@@ -39,6 +40,7 @@ class LayoutDetector:
             image_input: Either image path (str) or PIL Image
             max_loops: Maximum iterations for text block detection
             score_thresh: Minimum confidence score for detections
+            overlap_thresh: Maximum allowed overlap with existing blocks (default 0.3 = 30%)
             
         Returns:
             List of LayoutTextBlock objects with bounding boxes and cropped images
@@ -56,13 +58,34 @@ class LayoutDetector:
                 raise ValueError(f"Cannot read image: {image_input}")
 
         all_blocks = []
+        
+        def get_overlap_percent(new_box, existing_boxes):
+            """Returns max overlap percentage of new_box with any existing box"""
+            x1_min, y1_min, x1_max, y1_max = new_box
+            area1 = (x1_max - x1_min) * (y1_max - y1_min)
+            if area1 == 0:
+                return 0
+            
+            max_overlap = 0
+            for existing_box in existing_boxes:
+                x2_min, y2_min, x2_max, y2_max = existing_box
+                
+                # Calculate intersection
+                x_overlap = max(0, min(x1_max, x2_max) - max(x1_min, x2_min))
+                y_overlap = max(0, min(y1_max, y2_max) - max(y1_min, y2_min))
+                intersection_area = x_overlap * y_overlap
+                
+                overlap_pct = intersection_area / area1
+                max_overlap = max(max_overlap, overlap_pct)
+            
+            return max_overlap
 
         for loop in range(max_loops):
             predictions = self.layout_model.predict(
                 img, 
                 batch_size=1,
                 layout_nms=True,
-                layout_unclip_ratio=1.01,
+                layout_unclip_ratio=1.02,
                 threshold=score_thresh
             )
             
@@ -74,9 +97,22 @@ class LayoutDetector:
 
             if not blocks:
                 break
+            
+            app_logger.debug(SERVICE_NAME, f"Loop {loop}: Found {len(blocks)} blocks in this iteration")
 
             for i, block in enumerate(blocks):
                 x_min, y_min, x_max, y_max = map(int, block['coordinate'])
+                new_bbox = (x_min, y_min, x_max, y_max)
+                
+                # Check overlap with all existing blocks (including ones added in current iteration)
+                existing_bboxes = [b.bbox for b in all_blocks]
+                overlap = get_overlap_percent(new_bbox, existing_bboxes)
+                
+                if overlap > overlap_thresh:
+                    # Skip this block - too much overlap with existing blocks
+                    app_logger.info(SERVICE_NAME, 
+                        f"Skipping block with {overlap*100:.1f}% overlap at {new_bbox}")
+                    continue
                 
                 # Crop the text block from original image
                 cropped_cv = img[y_min:y_max, x_min:x_max]
@@ -86,9 +122,9 @@ class LayoutDetector:
                 
                 # Create LayoutTextBlock object
                 text_block = LayoutTextBlock(
-                    bbox=(x_min, y_min, x_max, y_max),
+                    bbox=new_bbox,
                     image_crop=cropped_pil,
-                    index=i,
+                    index=str(len(all_blocks)),  # Use total count for sequential indexing
                     score=block['score'],
                     label=block['label']
                 )
@@ -99,7 +135,7 @@ class LayoutDetector:
                 cv2.rectangle(img, (x_min, y_min), (x_max, y_max), (255, 255, 255), -1)
 
         if all_blocks:
-            app_logger.info("layoutguard", f"Detected {len(all_blocks)} text blocks")
+            app_logger.info(SERVICE_NAME, f"Detected {len(all_blocks)} text blocks")
         
         return all_blocks
     

@@ -19,7 +19,7 @@ if __name__ == "__main__":
     # model = YOLO( ROOT_DIR / "assets" / "models" / "Yolo" / "yolov8s-cls.pt")
     model = YOLO("yolov8n-seg.pt")
 
-    input_folder = ROOT_DIR / "assets" / "datasets" / "peanut" / "for-training"
+    input_folder = ROOT_DIR / "assets" / "peanuts" / "datasets" / "for-training"
 
     model.train(
         data=input_folder / "dataset.yaml",

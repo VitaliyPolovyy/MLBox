@@ -6,9 +6,21 @@ applications:
   - name: Peanuts
     route_prefix: "/peanuts"
     import_path: deployments.peanut_deployment:PeanutsDeployment
-    max_batch_size: 1
-    batch_wait_timeout_s: 0.1
-    max_ongoing_requests: 2
+    num_replicas: 1
+    max_ongoing_requests: 64
+    ray_actor_options:
+      num_cpus: 0.5
+    runtime_env:
+      env_vars:
+        RAY_RUNTIME_ENV_MODE: "host"
+  
+  - name: LabelGuard
+    route_prefix: "/labelguard"
+    import_path: deployments.labelguard_deployment:LabelGuardDeployment
+    num_replicas: 1
+    max_ongoing_requests: 64
+    ray_actor_options:
+      num_cpus: 0.5
     runtime_env:
       env_vars:
         RAY_RUNTIME_ENV_MODE: "host"

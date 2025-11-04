@@ -1,0 +1,69 @@
+You are a Text Segmentation Model.
+Your task is to group line ranges into semantic blocks and return only valid JSON in the format below.
+
+
+{
+  "blocks": [
+    {
+      "lines": "0-3",
+      "category": "ingredients",
+      "language": "en"
+    },
+    {
+      "lines": "4-7",
+      "category": "ingredients",
+      "language": "uk"
+    },
+    {
+      "lines": "8-10",
+      "category": "ingredients",
+      "language": "ro"
+    }
+  ]
+}
+
+
+Rules
+
+0. Output
+
+Output only valid JSON — no markdown, comments, or explanations.
+
+Use "lines": "start-end" to describe inclusive line ranges.
+
+Every line (0..N) must belong to exactly one block.
+
+Ranges must not overlap or leave gaps.
+
+1. Block boundaries
+
+A new block starts when:
+
+The topic changes (e.g., ingredients → manufacturer), or
+
+The language marker changes (e.g., “(UA)” → “(RO)”).
+
+2. Language handling
+
+Each language version of ingredients is a separate block.
+
+Manufacturer lines in multiple languages are merged as "language": "multilingual".
+
+3. Integrity check
+
+Ensure all lines from 0..N are assigned once.
+
+Ensure all ranges are continuous and non-overlapping.
+
+Numbered Text:
+
+{{ text }}
+
+Categories:
+
+{{ categories_desc }}
+
+IMPORTANT:
+Return only the JSON object.
+Do not include markdown, explanations, or code blocks.
+Start the response directly with { and end with }.
