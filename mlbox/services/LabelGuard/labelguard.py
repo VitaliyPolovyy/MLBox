@@ -1018,12 +1018,12 @@ def classify_ingredients_sentences(sentences: List[Sentence]) -> None:  # Fixed 
     
     # Define categories with descriptions
     categories = {
-        "PRODUCT_NAME": "Product name",
-        "ALLERGEN_PHRASE": "Sentences that list possible allergens",
-        "STORAGE_CONDITIONS": "Storage instructions including temperature, humidity, and preservation conditions",
-        "INGRIDIENTS": "Sentences that list ingredients or composition",
-        "CONTACT_INFO": "contact info, address, phone, email",
-        "UNKNOWN": "Unclassified or ambiguous text"
+            "PRODUCT_NAME": "Product name",
+            "ALLERGEN_PHRASE": "Sentences that list possible allergens",
+            "STORAGE_CONDITIONS": "Storage instructions including temperature, humidity, and preservation conditions",
+            "INGRIDIENTS": "Sentences that list ingredients or composition",
+            "CONTACT_INFO": "contact info, address, phone, email",
+            "UNKNOWN": "Unclassified or ambiguous text"
     }
     
     try:
@@ -1186,15 +1186,13 @@ def split_text_block_1(layout_block: LayoutTextBlock, ocr_result: OCRResult) -> 
         else:
             index = f"{base_index}_{i+1}"  # "10_1", "10_2", etc.
 
+        # how to removeleading  spaces and newlines from block.text
+        block.text = block.text.strip()
         #find
         joined_text.replace('\n', ' ')
         start_pos = joined_text.find(block.text[:50])
-        if start_pos == -1:
-            # Try finding without newlines
-            start_pos = joined_text.replace('\n', ' ').find(block.text)
         end_pos = start_pos + len(block.text)-1 if start_pos != -1 else len(joined_text)
-
-
+        
         category_words = get_words_by_char_position(ocr_result.words, [(start_pos, end_pos)])
             
         # Step 4: Calculate union bbox for this category
@@ -1473,6 +1471,11 @@ def refine_text_symbols(text : str) -> str:
     # Fix OCR mistake: (18+3)°C should be (18±3)°C (with or without spaces)
     text = re.sub(r'\((\d+)\s*\+\s*(\d+)\)°C', r'(\1±\2)°C', text)
     text = re.sub(r'(\d+)\s*\+\s*(\d+)°C', r'\1±\2°C', text)
+    # Fix OCR mistake: (18+5)'S should be (18±5)°S 
+    text = re.sub(r'\((\d+)\s*\+\s*(\d+)\)\'S', r'(\1±\2)°S', text)
+    
+    
+    
 
     text = strip_diacritics(text)
 
@@ -1531,7 +1534,7 @@ def extract_languages_from_etalon_files(label_image_path: str) -> List[str]:
         
         # Fallback to default languages if no etalon languages found
         if not bcp47_languages:
-            bcp47_languages = ["en", "uk", "bg", "ro", "pl", "ka", "kk", "az", "hy"]
+            return ["sq", "sr", "hy", "ar", "az", "bg", "bs", "zh", "cs", "de", "et", "en", "es", "fr", "ka", "el", "hr", "hu", "he", "it", "ky", "kk", "lt", "lv", "sr-ME", "mk", "mn", "ms", "nl", "pl", "pt", "ro", "ru", "sl", "sk", "tg", "tk", "uk", "uz"]
             
         app_logger.info(SERVICE_NAME, f"Extracted languages from etalon: {etalon_languages} -> OCR hints: {bcp47_languages}")
         return bcp47_languages
@@ -1539,7 +1542,7 @@ def extract_languages_from_etalon_files(label_image_path: str) -> List[str]:
     except Exception as e:
         app_logger.warning(SERVICE_NAME, f"Failed to extract languages from etalon: {e}. Using default languages.")
         # Fallback to hardcoded languages
-        return ["en", "uk", "bg", "ro", "pl", "ka", "kk", "az", "am"]
+        return ["sq", "sr", "hy", "ar", "az", "bg", "bs", "zh", "cs", "de", "et", "en", "es", "fr", "ka", "el", "hr", "hu", "he", "it", "ky", "kk", "lt", "lv", "sr-ME", "mk", "mn", "ms", "nl", "pl", "pt", "ro", "ru", "sl", "sk", "tg", "tk", "uk", "uz"]
 
 
 def _get_etalon_text_blocks(kmat: str, version: str, label_image_path: str) -> List[dict]:

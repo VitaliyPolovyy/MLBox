@@ -6,11 +6,9 @@ Return the result in the specified JSON schema format.
 {
   "blocks": [
     {
-      "text": "(EN) Sweet. Sample ingredients text",  # Full text content of this block
-      "category": "ingredients",                  # Category, must match one from the provided list
-      "language": "en"                            # Use ISO 639-1 two-letter codes (e.g., "uk", "ro", "pl", "en", "ru", "de").
-                                                  # If text is multilingual, use "multilingual".
-                                                  # Do not use custom tags like "ro-md" or "ua-pl".
+      "text": "(EN) Sweet. Sample ingredients text",
+      "category": "ingredients",
+      "language": "en"
     },
     {
       "text": "(UA) Печиво. Склад: цукор, борошно, молоко.",
@@ -18,17 +16,17 @@ Return the result in the specified JSON schema format.
       "language": "uk"
     },
     {
-      "text": "(RO)(MD) "LOVITA" CLASSIC COOKIES", BISCUITI CU BUCATI DE GLAZURA (30%). Ingrediente: zahar, faina de grđu, grasimi vegetale (ulei de palmier nehidrogenat, ulei de miez de palmieat",
+      "text": "(RO)(MD) \"LOVITA\" CLASSIC COOKIES, BISCUITI CU BUCATI DE GLAZURA (30%). Ingrediente: zahar, faina de grđu, grasimi vegetale (ulei de palmier nehidrogenat, ulei de miez de palmieat",
       "category": "ingredients",
       "language": "ro"
     }
-
-
-
   ]
 }
 
-
+where:
+"text" - Full text content of this block
+"category" - Category, must match one from the provided list. Use ISO 639-1 two-letter codes (e.g., "uk", "ro", "pl", "en", "ru", "de").. If text is multilingual, use "multilingual". Do not use custom tags like "ro-md" or "ua-pl".
+                                                  
 ### Splitting Rules
 1. A new block starts only when BOTH conditions are true:
 - A new line begins (\n), and
@@ -42,7 +40,8 @@ Return the result in the specified JSON schema format.
 
 3 Never split a block because of punctuation, abbreviations, or parentheses.
 4 .After splitting, verify that each block is complete and consistent within its category.
-5. Each block's "text" must exactly match part of the original text — no rephrasing, normalization, correction of errors, or omission. Copy the text character-by-character, preserving all typos, misspellings, and grammatical errors exactly as they appear.
+5. Each block's "text" must exactly match part of the original text — no rephrasing, normalization, correction of errors, or omission. 
+5a. Copy each block’s text character-by-character from the original input string using exact substring extraction, not retyped text. Never re-generate or re-spell any part.
 
 ### Text:
 "{{ text }}"

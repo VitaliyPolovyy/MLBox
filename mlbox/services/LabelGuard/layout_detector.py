@@ -31,7 +31,7 @@ class LayoutDetector:
     
     def extract_blocks(self, image_input: Image.Image, 
                       max_loops: int = 5, 
-                      score_thresh: float = 0.4,
+                      score_thresh: float = 0.3,
                       overlap_thresh: float = 0.3) -> List[LayoutTextBlock]:
         """
         Extract text blocks from image using iterative detection and removal.

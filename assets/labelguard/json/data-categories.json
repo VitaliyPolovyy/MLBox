@@ -1,7 +1,7 @@
 {
   "A": {
     "name": "ingredients",
-    "description": "starts with a language marker (e.g., '(UA)', '(RO)') + product name + Ingredient list (keywords: 'Склад', 'Съставки', 'Ingrediente', 'Składniki', 'Құрамы', 'ინგრედიენტები', 'Состав', 'Ingredients', 'Composition') + allergen statements + storage info (°C, humidity) + importer name, address, contact info (keywords: 'Importator', 'Importer') + Country of manufacture (Keywords: 'Jara de origine: ', 'Wyprodukowano w: ', 'Земја на потекло '). Each language version of this category is a separate block."
+    "description": "starts with a language marker (e.g., '(UA)', '(RO)') + product name + Ingredient list (keywords: 'Склад', 'Съставки', 'Ingrediente', 'Składniki', 'Құрамы', 'ინგრედიენტები', 'Состав', 'Ingredients', 'Composition') + allergen statements + storage info (°C, humidity) + nutritional values like calories, fat, sodium, etc (optionally)+ importer name, address, contact info (keywords: 'Importator', 'Importer') + Country of manufacture (Keywords: 'Jara de origine: ', 'Wyprodukowano w: ', 'Земја на потекло '). Each language version of this category is a separate block.If text starts with a language marker and includes product name, ingredients, and country — classify as A, even if long or contains nutrition data."
   },
   "B": {
     "name": "manufacturer",
