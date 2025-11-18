@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LabelGuard - Label Validation</title>
+  <style>
+    body {
+      display: flex;
+      height: 100vh;
+      min-height: 600px;
+      margin: 0;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    #imagePanel {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      border-right: 1px solid #ccc;
+      cursor: grab;
+      padding: 25px;
+      box-sizing: border-box;
+      background-color: #f5f5f5;
+    }
+    
+    #imagePanel:active {
+      cursor: grabbing;
+    }
+    
+    #messagePanel {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      background-color: #fff;
+    }
+    
+    canvas {
+      display: block;
+    }
+    
+    #debugInfo {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      background: rgba(0, 0, 0, 0.7);
+      color: #0f0;
+      padding: 8px;
+      font-family: monospace;
+      font-size: 12px;
+      border-radius: 4px;
+      pointer-events: none;
+      z-index: 1000;
+      white-space: pre;
+    }
+    
+    #controlPanel {
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    #controlPanel button {
+      padding: 10px 20px;
+      margin-right: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: #f8f8f8;
+    }
+    
+    #controlPanel button:hover {
+      background-color: #e8e8e8;
+    }
+    
+    #controlPanel button:active {
+      background-color: #d8d8d8;
+    }
+    
+    #analyzeBtn {
+      background-color: #4CAF50;
+      color: white;
+      border-color: #4CAF50;
+    }
+    
+    #analyzeBtn:hover {
+      background-color: #45a049;
+    }
+    
+    #filterPanel {
+      font-size: 18px;
+      font-family: inherit;
+      margin-bottom: 22px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    #filterPanel label {
+      display: inline-block;
+      margin-right: 18px;
+      margin-bottom: 6px;
+      cursor: pointer;
+    }
+    
+    #filterPanel label:hover {
+      color: #054aad;
+    }
+    
+    .rule-count {
+      font-weight: 600;
+    }
+    
+    .rule-count.has-errors {
+      color: #d00;
+    }
+    
+    .rule-count.no-errors {
+      color: #888;
+    }
+    
+    #msgContent {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Left Panel: Image with bboxes -->
+  <div id="imagePanel">
+    <div id="debugInfo">Hover over blocks to see info</div>
+    <canvas id="labelCanvas"></canvas>
+  </div>
+  
+  <!-- Right Panel: Controls and Details -->
+  <div id="messagePanel">
+    <!-- Control buttons -->
+    <div id="controlPanel">
+      <button id="analyzeBtn">Analyze</button>
+    </div>
+    
+    <!-- Category selector (shown when bbox selected in edit mode) -->
+    <div id="categorySelector" style="display: none; margin: 10px 0;">
+      <label>Category: 
+        <select id="categorySelect">
+          <option value="">-- Select --</option>
+          <option value="A">A</option>
+          <option value="B">B</option>
+          <option value="C">C</option>
+          <option value="D">D</option>
+        </select>
+      </label>
+    </div>
+    
+    <!-- Filter panel for rule types -->
+    <div id="filterPanel"></div>
+    
+    <!-- Error list / Block details -->
+    <div id="msgContent">Click on a red rectangle to see error details</div>
+  </div>
+  
+  <!-- JavaScript logic -->
+  <script src="/assets/labelguard/js/labelguard-ui.js"></script>
+</body>
+</html>
+

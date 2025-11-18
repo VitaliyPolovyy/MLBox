@@ -67,7 +67,7 @@ class TextBlock:
     index:Optional[str] = None
     lcs_results: Optional[List[Match]] = None
     etalon_text: Optional[str] = None
-
+    modified: bool = False  # Track if user has edited this block
 
 # ============================================================================
 # VALIDATION RESULT DATA STRUCTURES
@@ -133,6 +133,74 @@ class LabelProcessingResult:
     version: Optional[str] = None
     original_filename: Optional[str] = None
     success: bool = True
+    
+    def to_json(self) -> dict:
+        """
+        Convert LabelProcessingResult to JSON-serializable dict for JS frontend.
+        Only includes fields needed by the frontend UI.
+        
+        Returns:
+            Dict that can be serialized to JSON
+        """
+        def serialize_rule_check_result(rule_result: RuleCheckResult) -> dict:
+            """Serialize RuleCheckResult - only fields needed by JS"""
+            # Serialize metadata if present (convert any non-serializable objects to strings)
+            serialized_metadata = {}
+            if rule_result.metadata:
+                for key, value in rule_result.metadata.items():
+                    # Skip non-serializable objects, convert to string if needed
+                    try:
+                        import json
+                        json.dumps(value)  # Test if serializable
+                        serialized_metadata[key] = value
+                    except (TypeError, ValueError):
+                        # If not serializable, convert to string representation
+                        serialized_metadata[key] = str(value)
+            
+            return {
+                "rule_name": rule_result.rule_name.value if isinstance(rule_result.rule_name, RulesName) else rule_result.rule_name,
+                "passed": bool(rule_result.passed),  # Convert numpy bool_ to Python bool
+                "text_block": {"index": rule_result.text_block.index} if rule_result.text_block else None,
+                "visual_markers": [
+                    {
+                        "type": marker.type,
+                        "bbox": list(marker.bbox),
+                        "color": list(marker.color),
+                        "opacity": float(marker.opacity) if marker.opacity is not None else None
+                    }
+                    for marker in rule_result.visual_markers
+                ],
+                "html_details": rule_result.html_details,
+                "metadata": serialized_metadata  # Include metadata if present
+            }
+        
+        def serialize_text_block(block: TextBlock) -> dict:
+            """Serialize TextBlock - only fields needed by JS"""
+            return {
+                "index": block.index,
+                "bbox": list(block.bbox),
+                "text": block.text,
+                "etalon_text": block.etalon_text,
+                "type": block.type,
+                "modified": bool(block.modified),  # Convert numpy bool_ to Python bool
+                "languages": block.languages if isinstance(block.languages, list) else [block.languages] if block.languages else [],
+                "sentences": [
+                    {
+                        "index": int(sentence.index) if sentence.index is not None else 0,  # Convert numpy int types
+                        "text": sentence.text,
+                        "category": sentence.category
+                    }
+                    for sentence in block.sentences
+                ]
+            }
+        
+        return {
+            "kmat": self.kmat,
+            "version": self.version,
+            "original_filename": self.original_filename,
+            "text_blocks": [serialize_text_block(block) for block in self.text_blocks],
+            "rule_check_results": [serialize_rule_check_result(rule) for rule in self.rule_check_results]
+        }
 
 
 @dataclass

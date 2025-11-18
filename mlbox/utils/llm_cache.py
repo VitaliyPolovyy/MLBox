@@ -35,7 +35,7 @@ class LLMCache:
         hash_key = self._get_cache_key(prompt, model)
         if prefix:
             sanitized_prefix = self._sanitize_prefix(prefix)
-            return f"{sanitized_prefix}_{hash_key}.json"
+            return f"{sanitized_prefix}_{hash_key}_llm.json"
         else:
             return f"{hash_key}.json"
     

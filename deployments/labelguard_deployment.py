@@ -10,11 +10,13 @@ from pathlib import Path
 import ray
 from jsonschema import ValidationError as JSONSchemaValidationError
 from jsonschema import validate
+from starlette.responses import Response
+from urllib.parse import unquote
 
 from PIL import Image as PILImage
 from ray import serve
 from starlette.requests import Request
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, JSONResponse, FileResponse
 from mlbox.services.LabelGuard.datatypes import LabelInput
 from mlbox.services.LabelGuard import labelguard
 from mlbox.settings import ROOT_DIR
@@ -52,7 +54,25 @@ class LabelGuard:
         return response_data
     
     async def __call__(self, request: Request):
-        # Check if HTML response is requested
+        # Route based on path
+        path = request.url.path
+        app_logger.info(self.SERVICE_NAME, f"Received request: {request.method} {path}")
+        
+        # Strip /labelguard prefix if present (Ray Serve route_prefix)
+        if path.startswith("/labelguard/"):
+            path = path[len("/labelguard"):]  # Remove /labelguard but keep the leading /
+        
+        # Handle /analyze endpoint
+        if path.endswith("/analyze") or path.endswith("/analyze/"):
+            app_logger.info(self.SERVICE_NAME, f"Routing to analyze_endpoint for: {path}")
+            return await self.analyze_endpoint(request)
+        
+        # Handle static file serving for /artifacts/ paths
+        if path.startswith("/artifacts/"):
+            app_logger.info(self.SERVICE_NAME, f"Routing to serve_static_file for: {path}")
+            return await self.serve_static_file(request)
+        
+        # Default: legacy batch handler
         accept_header = request.headers.get("accept", "")
         result = await self.batch_handler(request)
         
@@ -63,6 +83,187 @@ class LabelGuard:
                     return HTMLResponse(content=result[0]["data"]["html_report"])
         
         return result[0] if len(result) == 1 else result
+    
+    async def analyze_endpoint(self, request: Request):
+        """Handle POST /labelguard/analyze endpoint"""
+        # Handle CORS preflight
+        if request.method == "OPTIONS":
+            return JSONResponse(
+                {},
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type",
+                }
+            )
+        
+        if request.method != "POST":
+            return JSONResponse(
+                {"status": "error", "message": "Method not allowed"},
+                status_code=405,
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+        
+        try:
+            # Parse request body
+            body = await request.json()
+            
+            # Extract parameters
+            image_path = body.get("image_path")
+            blocks = body.get("blocks", [])
+            kmat = body.get("kmat", "UNKNOWN")
+            version = body.get("version", "v1.0")
+            etalon = body.get("etalon")
+            
+            app_logger.info(self.SERVICE_NAME, f"Analyze request: kmat={kmat}, version={version}, blocks={len(blocks)}")
+            
+            # Check if this is first call (empty blocks) or subsequent call
+            is_first_call = len(blocks) == 0
+            
+            # Prepare request JSON for analyze function
+            request_json = {
+                "image_path": image_path,
+                "blocks": blocks,
+                "kmat": kmat,
+                "version": version
+            }
+            if etalon:
+                request_json["etalon"] = etalon
+            
+            # Call analyze function
+            result = labelguard.analyze(request_json)
+            
+            # Determine original filename
+            original_filename = result.original_filename or Path(image_path).stem if image_path else "unknown"
+            
+            # Artifacts directory
+            artifacts_dir = ROOT_DIR / "artifacts" / "labelguard"
+            artifacts_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Save image and JSON to artifacts
+            image_file = artifacts_dir / f"{original_filename}.jpg"
+            json_file = artifacts_dir / f"{original_filename}.json"
+            
+            # Load and save image
+            if image_path:
+                image_full_path = ROOT_DIR / image_path.lstrip('/')
+                if image_full_path.exists():
+                    from shutil import copyfile
+                    copyfile(str(image_full_path), str(image_file))
+                    app_logger.info(self.SERVICE_NAME, f"Saved image to {image_file}")
+            
+            # Serialize result to JSON
+            result_json = result.to_json()
+            
+            # Save JSON
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "image_path": f"/artifacts/labelguard/{original_filename}.jpg",
+                    "labelProcessingResult": result_json
+                }, f, ensure_ascii=False, indent=2)
+            app_logger.info(self.SERVICE_NAME, f"Saved JSON to {json_file}")
+            
+            # Return response based on call type
+            cors_headers = {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type",
+            }
+            
+            if is_first_call:
+                # First call: return file paths
+                return JSONResponse({
+                    "status": "success",
+                    "image_path": f"/artifacts/labelguard/{original_filename}.jpg",
+                    "data_endpoint": f"/artifacts/labelguard/{original_filename}.json",
+                    "original_filename": original_filename
+                }, headers=cors_headers)
+            else:
+                # Subsequent call: return LabelProcessingResult JSON
+                return JSONResponse({
+                    "status": "success",
+                    "labelProcessingResult": result_json
+                }, headers=cors_headers)
+                
+        except Exception as e:
+            error_trace = traceback.format_exc()
+            app_logger.error(self.SERVICE_NAME, f"Analyze endpoint error: {str(e)}\n{error_trace}")
+            return JSONResponse(
+                {
+                    "status": "error",
+                    "message": str(e),
+                    "stack": error_trace
+                },
+                status_code=500,
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+    
+    async def serve_static_file(self, request: Request):
+        """Serve static files from /artifacts/ directory"""
+        
+        path = request.url.path
+        app_logger.info(self.SERVICE_NAME, f"serve_static_file called with path: {path}")
+        
+        # Strip /labelguard prefix if present (Ray Serve route_prefix)
+        if path.startswith("/labelguard/"):
+            path = path[len("/labelguard"):]  # Remove /labelguard but keep the leading /
+        
+        # Remove leading /artifacts/ to get relative path
+        if path.startswith("/artifacts/"):
+            relative_path = path[len("/artifacts/"):]
+        else:
+            relative_path = path.lstrip("/")
+        
+        # URL decode the path to handle special characters (Cyrillic, etc.)
+        relative_path = unquote(relative_path)
+        
+        # Construct full file path
+        file_path = ROOT_DIR / "artifacts" / relative_path
+        
+        app_logger.debug(self.SERVICE_NAME, f"Serving static file: {file_path} (exists: {file_path.exists()})")
+        
+        # Security check: ensure path is within artifacts directory
+        try:
+            file_path.resolve().relative_to(ROOT_DIR / "artifacts")
+        except ValueError:
+            return JSONResponse(
+                {"status": "error", "message": "Invalid path"},
+                status_code=403
+            )
+        
+        if not file_path.exists():
+            app_logger.warning(self.SERVICE_NAME, f"File not found: {file_path}")
+            return JSONResponse(
+                {"status": "error", "message": f"File not found: {relative_path}"},
+                status_code=404
+            )
+        
+        # Determine content type
+        if file_path.suffix.lower() in ['.jpg', '.jpeg']:
+            media_type = "image/jpeg"
+        elif file_path.suffix.lower() == '.png':
+            media_type = "image/png"
+        elif file_path.suffix.lower() == '.gif':
+            media_type = "image/gif"
+        elif file_path.suffix.lower() == '.json':
+            media_type = "application/json"
+        else:
+            media_type = "application/octet-stream"
+        
+        # Read file content
+        with open(file_path, 'rb') as f:
+            content = f.read()
+        
+        # Return response with CORS headers
+        return Response(
+            content=content,
+            media_type=media_type,
+            headers={
+                "Access-Control-Allow-Origin": "*",  # Allow all origins for development
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type",
+            }
+        )
     
     @serve.batch(max_batch_size=4, batch_wait_timeout_s=0.1)
     async def batch_handler(self, requests: List[Request]) -> List[dict]:

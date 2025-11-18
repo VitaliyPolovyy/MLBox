@@ -58,7 +58,8 @@ CATEGORIES_TO_CHECK = ["A"]
 
 app_logger = get_logger(ROOT_DIR)
 artifact_service = get_artifact_service(ROOT_DIR)
-llm_cache = LLMCache(artifact_service.get_service_dir(SERVICE_NAME) / "llm_cache")
+# LLM cache goes in cache/ subdirectory
+llm_cache = LLMCache(artifact_service.get_service_dir(SERVICE_NAME) / "cache")
 
 
 # Language mapping helpers
@@ -702,12 +703,12 @@ def process_labels(labels: List[LabelInput]) -> List[LabelProcessingResult]:
         layout_blocks = layout_detector.extract_blocks(label.label_image_path)
         #layout_blocks = LoadLayoutBlocks(label.label_image_path)
         
-        # Save detected blocks as artifacts
+        # Save detected blocks as artifacts (debug files go to temp/)
         if LOG_LEVEL == "DEBUG":
             for i, layout_block in enumerate(layout_blocks):
                 artifact_service.save_artifact(
                     service=SERVICE_NAME,
-                    file_name=f"{Path(label.label_image_path).stem}_{i}.jpg",
+                    file_name=f"temp/{Path(label.label_image_path).stem}_{i}.jpg",
                     data=layout_block.image_crop
                 )
             
@@ -747,20 +748,20 @@ def process_labels(labels: List[LabelInput]) -> List[LabelProcessingResult]:
                 if len(layout_blocks_splitted) > 1:
                     splitted_text_block_indicies.extend([split_block.index for split_block in layout_blocks_splitted])
                     for split_block in layout_blocks_splitted:
-                        # to do: save split_block.image
+                        # Save split block images to temp/ (debug files)
                         artifact_service.save_artifact(
                             service=SERVICE_NAME,
-                            file_name=f"{Path(label.label_image_path).stem}_{split_block.index}.jpg",
+                            file_name=f"temp/{Path(label.label_image_path).stem}_{split_block.index}.jpg",
                             data=split_block.image_crop
                         )
                         processing_queue.appendleft(split_block)
                     continue;
             
-            # Save OCR results as text artifacts in DEBUG mode
+            # Save OCR results as text artifacts in DEBUG mode (debug files go to temp/)
             if LOG_LEVEL == "DEBUG":
                 input_name = Path(label.label_image_path).stem
             
-                text_filename = f"{input_name}_block_{i}.txt"
+                text_filename = f"temp/{input_name}_block_{i}.txt"
                 artifact_service.save_artifact(
                     service=SERVICE_NAME,
                     file_name=text_filename,
@@ -854,6 +855,422 @@ def process_labels(labels: List[LabelInput]) -> List[LabelProcessingResult]:
     
     return label_processing_results
 
+
+def mask_bboxes_in_image(image: Image.Image, bboxes: List[tuple]) -> Image.Image:
+    """
+    Mask provided bbox areas with white rectangles.
+    
+    Args:
+        image: PIL Image to mask
+        bboxes: List of bbox tuples (x1, y1, x2, y2)
+        
+    Returns:
+        New PIL Image with white rectangles drawn over bbox areas
+    """
+    import cv2
+    import numpy as np
+    
+    # Convert PIL to OpenCV format
+    img_array = np.array(image.convert('RGB'))
+    img_cv = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+    
+    # Draw white rectangles over each bbox
+    for bbox in bboxes:
+        x1, y1, x2, y2 = map(int, bbox)
+        cv2.rectangle(img_cv, (x1, y1), (x2, y2), (255, 255, 255), -1)
+    
+    # Convert back to PIL
+    img_rgb = cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB)
+    return Image.fromarray(img_rgb)
+
+
+def calculate_bbox_overlap(bbox1: tuple, bbox2: tuple) -> float:
+    """
+    Calculate overlap percentage between two bboxes.
+    
+    Args:
+        bbox1: (x1, y1, x2, y2)
+        bbox2: (x1, y1, x2, y2)
+        
+    Returns:
+        Overlap percentage (0.0 to 1.0)
+    """
+    x1_1, y1_1, x2_1, y2_1 = bbox1
+    x1_2, y1_2, x2_2, y2_2 = bbox2
+    
+    # Calculate intersection
+    x1_i = max(x1_1, x1_2)
+    y1_i = max(y1_1, y1_2)
+    x2_i = min(x2_1, x2_2)
+    y2_i = min(y2_1, y2_2)
+    
+    if x2_i <= x1_i or y2_i <= y1_i:
+        return 0.0
+    
+    intersection_area = (x2_i - x1_i) * (y2_i - y1_i)
+    bbox2_area = (x2_2 - x1_2) * (y2_2 - y1_2)
+    
+    if bbox2_area == 0:
+        return 0.0
+    
+    return intersection_area / bbox2_area
+
+
+def analyze(request_json: dict) -> LabelProcessingResult:
+    """
+    Unified analyze function that handles both initial detection and re-analysis with corrections.
+    
+    According to spec:
+    - If blocks is empty → normal layout detection
+    - If blocks provided → mask provided bbox areas (white rectangles), run layout detection on masked image,
+      filter detected bboxes (overlap > 10% with provided), merge provided + filtered detected bboxes
+    - Always run full pipeline (OCR, text parsing, category detection, validation)
+    
+    Args:
+        request_json: Dict with:
+            - 'image_path' (str): Path to image file (e.g., '/artifacts/labelguard/filename.jpg')
+            - 'etalon_path' (str, optional): Path to etalon image file (will be OCR'd to extract text blocks)
+            - 'blocks' (list): List of block dicts or empty list
+                Block format: [{"id": str, "bbox": [x1,y1,x2,y2], "category": str, "text": str, "modified": bool}, ...]
+            - 'kmat' (str, optional): Product code
+            - 'version' (str, optional): Version string
+            - Note: If etalon_path not provided, will try to load from {image_stem}_etalon.json (legacy)
+            
+    Returns:
+        LabelProcessingResult with enriched blocks and validation results
+    """
+    image_path_str = request_json["image_path"]
+    etalon_path_str = request_json.get("etalon_path")  # Optional: path to etalon image
+    blocks_data = request_json.get("blocks", [])
+    kmat = request_json.get("kmat", "UNKNOWN")
+    version = request_json.get("version", "v1.0")
+    
+    # Load image
+    # image_path_str can be:
+    # - First call: path to uploaded image (e.g., "assets/labelguard/datasets/...")
+    # - Subsequent calls: path to artifact (e.g., "/artifacts/labelguard/{filename}.jpg")
+    # The image must exist at this path (ERP/uploads should save it before calling analyze)
+    image_path = ROOT_DIR / image_path_str.lstrip('/')  # Remove leading slash if present
+    if not image_path.exists():
+        app_logger.error(SERVICE_NAME, f"Image not found: {image_path}")
+        raise FileNotFoundError(f"Image not found: {image_path}")
+    
+    label_image = Image.open(image_path)
+    original_filename = Path(image_path_str).stem
+    
+    app_logger.info(SERVICE_NAME, f"Analyzing: kmat={kmat}, version={version}, blocks_count={len(blocks_data)}")
+    
+    # Initialize processors
+    layout_detector = LayoutDetector()
+    ocr_processor = VisionOCRProcessor()
+    
+    # Step 1: Collect bboxes
+    provided_blocks = []
+    layout_blocks_input : List[LayoutTextBlock] = []
+    image = label_image.copy()
+    
+    if blocks_data:
+        # Create lightweight TextBlocks from provided blocks
+        for block_dict in blocks_data:
+            block_bbox = tuple(block_dict.get("bbox", []))
+            layout_blocks_input.append(LayoutTextBlock(
+                index=block_dict.get("id", ""),
+                bbox=block_bbox,
+                image_crop=label_image.crop(block_bbox),
+                label=block_dict.get("category", ""),
+                score=1
+            ))
+
+        # to do: куьщму all input bboxes from label_image leave blank space on their places
+        for layout_block in layout_blocks_input:
+            x1, y1, x2, y2 = layout_block.bbox
+            image.paste(Image.new('RGB', (x2 - x1, y2 - y1), (255, 255, 255)), (x1, y1))
+        
+        
+    detected_layout_blocks = layout_detector.extract_blocks(image)
+    detected_layout_blocks.extend(layout_blocks_input)
+    
+    # Convert to TextBlocks
+    layout_blocks_to_process = []
+    for layout_block in detected_layout_blocks:
+        text_block = TextBlock(
+            bbox=layout_block.bbox,
+            index=layout_block.index,
+            sentences=[],
+            text="",
+            type="",
+            allergens=[],
+            languages="",
+            modified=False
+        )
+        layout_blocks_to_process.append(text_block)
+    
+    # Step 2: Get etalon data
+    if etalon_path_str:
+        # Process etalon image: OCR to extract text blocks
+        app_logger.info(SERVICE_NAME, "No etalon_path provided, trying to load from JSON file")
+        etalon_text_blocks = _get_etalon_text_blocks(kmat, version, etalon_path_str)
+    
+    # Step 3: OCR processing and enrichment
+    app_logger.info(SERVICE_NAME, f"Starting OCR processing for {len(layout_blocks_to_process)} blocks")
+    
+    # Extract language hints from etalon files
+    language_hints = extract_languages_from_etalon_files(image_path)
+    app_logger.info(SERVICE_NAME, f"Language hints: {language_hints}")
+    
+    label_processing_result = LabelProcessingResult()
+    label_processing_result.kmat = kmat
+    label_processing_result.version = version
+    label_processing_result.original_filename = original_filename
+    
+    # Process each block
+    for text_block in layout_blocks_to_process:
+        # Crop image by bbox
+        x1, y1, x2, y2 = text_block.bbox
+        cropped_image = label_image.crop((x1, y1, x2, y2))
+        
+        # Run OCR (or use provided text if exists and not empty)
+        if text_block.text and text_block.text.strip():
+            # Use provided text, but still need to run OCR for word-level data
+            app_logger.info(SERVICE_NAME, f"Block {text_block.index}: Using provided text, running OCR for word-level data")
+        
+        # Vision cache files go in cache/ subdirectory
+        cache_dir = artifact_service.get_service_dir(SERVICE_NAME) / "cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        json_vision_filename = str(cache_dir / f"{original_filename}_{text_block.index}_vision.json")
+        ocr_result = ocr_processor.process(
+            cropped_image,
+            input_filename=str(image_path),
+            json_vision_filename=json_vision_filename,
+            language_hints=language_hints
+        )
+        
+        # Refine text symbols
+        ocr_result.text = refine_text_symbols(ocr_result.text)
+        for word in ocr_result.words:
+            word.text = refine_text_symbols(word.text)
+        
+        # Use provided text if available, otherwise use OCR text
+        if text_block.text and text_block.text.strip():
+            # Keep provided text but update OCR words
+            final_text = text_block.text
+        else:
+            final_text = ocr_result.text
+            text_block.text = final_text
+        
+        # Detect category if empty
+        if not text_block.type or text_block.type.strip() == "":
+            text_block.type = classify_text_block(ocr_result)
+        
+        # Parse sentences
+        if ocr_result.language == "hy":  # armenian
+            delimiters = [':', '!', '?']
+        else:
+            delimiters = ['.', '!', '?']
+        sentences = split_words_into_sentences(ocr_result.words, ocr_result.language, delimiters)
+        
+        # Classify sentences if type is A (ingredients)
+        if text_block.type == "A":
+            classify_ingredients_sentences(sentences)
+            # Detect allergens
+            try:
+                ingredients_sentence_index = [sentence.index for sentence in sentences if sentence.category == "INGRIDIENTS"][0]
+                for i, word in enumerate(sentences[ingredients_sentence_index].words):
+                    if word.text == ':':
+                        allergens = [word for word in sentences[ingredients_sentence_index].words[i + 1:] if word.bold and word.text != " "]
+                        break
+                else:
+                    allergens = []
+            except IndexError:
+                allergens = []
+        else:
+            allergens = []
+        
+        # Find etalon text
+        etalon_text = find_etalon_text(text_block.type, ocr_result.language, etalon_text_blocks)
+        lcs_results = []
+        if etalon_text and final_text:
+            lcs_results = all_common_substrings_by_words(
+                etalon_text,
+                final_text,
+                min_length_words=2,
+                maximal_only=True,
+                ignorable_symbols=",.()!:;- "
+            )
+        
+        # Update text block with enriched data
+        text_block.sentences = sentences
+        text_block.text = final_text
+        text_block.allergens = allergens
+        text_block.languages = [ocr_result.language]
+        text_block.etalon_text = etalon_text
+        text_block.lcs_results = lcs_results
+        
+        label_processing_result.text_blocks.append(text_block)
+    
+    # Step 4: Run validation
+    app_logger.info(SERVICE_NAME, f"Running validation on {len(label_processing_result.text_blocks)} blocks")
+    label_processing_result.rule_check_results = validate_label(label_processing_result)
+    
+    app_logger.info(SERVICE_NAME, f"Analysis complete: {len(label_processing_result.rule_check_results)} validation results")
+    
+    # Step 5: Save JSON to artifacts directory
+    artifacts_dir = artifact_service.get_service_dir(SERVICE_NAME)
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    
+    result_json = label_processing_result.to_json()
+    
+    # Validate that result_json is fully serializable before saving
+    try:
+        json.dumps(result_json)  # Test serialization
+    except (TypeError, ValueError) as e:
+        app_logger.error(SERVICE_NAME, f"Error: result_json contains non-serializable objects: {e}")
+        # Try to find and fix the issue
+        import json as json_lib
+        def find_non_serializable(obj, path=""):
+            """Recursively find non-serializable objects"""
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    find_non_serializable(v, f"{path}.{k}" if path else k)
+            elif isinstance(obj, list):
+                for i, v in enumerate(obj):
+                    find_non_serializable(v, f"{path}[{i}]" if path else f"[{i}]")
+            else:
+                try:
+                    json_lib.dumps(obj)
+                except (TypeError, ValueError):
+                    app_logger.error(SERVICE_NAME, f"Non-serializable object found at {path}: {type(obj)} = {obj}")
+        find_non_serializable(result_json)
+        raise
+    
+    output_data = {
+        "image_path": f"/artifacts/labelguard/{original_filename}.jpg",
+        "labelProcessingResult": result_json
+    }
+    
+    json_file = artifacts_dir / f"{original_filename}.json"
+    with open(json_file, 'w', encoding='utf-8') as f:
+        json.dump(output_data, f, ensure_ascii=False, indent=2)
+    
+    app_logger.info(SERVICE_NAME, f"Saved JSON to: {json_file}")
+    
+    # Smart image copying: only copy if source is different from target
+    image_file = artifacts_dir / f"{original_filename}.jpg"
+    
+    # Check if image is already in artifacts at the correct location
+    if image_file.exists() and image_path.resolve() == image_file.resolve():
+        # Image is already in the right place, skip copy
+        app_logger.debug(SERVICE_NAME, f"Image already in artifacts: {image_file}")
+    elif not image_file.exists() or image_path.resolve() != image_file.resolve():
+        # Image needs to be copied (either doesn't exist in artifacts, or source is different)
+        from shutil import copyfile
+        copyfile(str(image_path), str(image_file))
+        app_logger.info(SERVICE_NAME, f"Copied image to: {image_file}")
+    
+    return label_processing_result
+
+
+def analyze_corrected_blocks(request_json: dict) -> LabelProcessingResult:
+    """
+    Re-analyze label with user corrections.
+    Skips layout detection, runs OCR on each corrected bbox.
+    
+    According to spec:
+    1. SKIP layout detection
+    2. SKIP block splitting
+    3. For each block: Run OCR on bbox → extract text (or use provided text if exists)
+    4. Parse text → create sentences → create words with bboxes and bold flags
+    5. Build complete TextBlock structure (enrichment), preserving modified flag
+    6. Run category detection if category is empty/None
+    7. Reconstruct LabelProcessingResult from enriched blocks
+    8. Run validation using validate_label()
+    9. Generate updated validation results
+    
+    Args:
+        request_json: Dict with 'image_path' (str) and 'blocks' (list of dicts)
+            blocks format: [{"id": str, "bbox": [x,y,w,h], "category": str, "text": str, "modified": bool}, ...]
+        
+    Returns:
+        LabelProcessingResult with enriched blocks and updated validation results
+    """
+    def create_label_processing_result_from_json(request_json: dict) -> LabelProcessingResult:
+        """
+        Create initial LabelProcessingResult from JSON request.
+        Creates lightweight TextBlocks (without OCR enrichment yet).
+        """
+        image_path_str = request_json["image_path"]
+        blocks_data = request_json["blocks"]
+        
+        # Create result object with metadata
+        label_processing_result = LabelProcessingResult()
+        label_processing_result.kmat = request_json.get("kmat", "UNKNOWN")
+        label_processing_result.version = request_json.get("version", "v1.0")
+        label_processing_result.original_filename = Path(image_path_str).stem
+        
+        # Create lightweight TextBlocks from JSON blocks
+        for block_dict in blocks_data:
+            block_id = block_dict.get("id", "")
+            block_bbox = tuple(block_dict.get("bbox", []))
+            block_category = block_dict.get("category", "")
+            block_text = block_dict.get("text", "")
+            block_modified = block_dict.get("modified", False)
+            
+            # Create lightweight TextBlock (will be enriched later with OCR)
+            text_block = TextBlock(
+                bbox=block_bbox,
+                index=block_id,
+                sentences=[],  # Will be populated by OCR
+                text=block_text,  # May be empty, will be filled by OCR if empty
+                type=block_category,  # May be empty, will be detected if empty
+                allergens=[],  # Will be populated during enrichment
+                languages="",  # Will be detected during OCR
+                modified=block_modified
+            )
+            
+            label_processing_result.text_blocks.append(text_block)
+        
+        return label_processing_result
+    
+    # Step 1: Create initial result from JSON
+    label_processing_result = create_label_processing_result_from_json(request_json)
+    
+    image_path_str = request_json["image_path"]
+    blocks_data = request_json["blocks"]
+    
+    app_logger.info(SERVICE_NAME, f"Analyzing {len(blocks_data)} corrected blocks")
+    
+    # Step 2: Load image from path
+    image_path = ROOT_DIR / image_path_str
+    if not image_path.exists():
+        app_logger.error(SERVICE_NAME, f"Image not found: {image_path}")
+        raise FileNotFoundError(f"Image not found: {image_path}")
+    
+    label_image = Image.open(image_path)
+    app_logger.info(SERVICE_NAME, f"Loaded image from {image_path}")
+    
+    # Initialize processors
+    ocr_processor = VisionOCRProcessor()
+    
+    # Step 3-6: Enrich each block with OCR
+    for text_block in label_processing_result.text_blocks:
+        app_logger.info(SERVICE_NAME, f"Processing block {text_block.index}: bbox={text_block.bbox}, category={text_block.type}")
+        
+        # TODO: Implement OCR processing per block
+        # - Crop image by bbox
+        # - Run OCR (or use provided text if exists)
+        # - Parse sentences and words
+        # - Detect category if empty
+        # - Update text_block with enriched data
+    
+    # Step 7-9: Run validation
+    app_logger.info(SERVICE_NAME, f"Running validation on {len(label_processing_result.text_blocks)} blocks")
+    label_processing_result.rule_check_results = validate_label(label_processing_result)
+    
+    app_logger.info(SERVICE_NAME, f"Analysis complete: {len(label_processing_result.rule_check_results)} validation results")
+    
+    return label_processing_result
+
+
 def detect_allergens(words: List[str], language: str = "en") -> List[str]:
     """Detect allergens from bold text using LLM"""
     if not words:
@@ -891,7 +1308,7 @@ def detect_allergens(words: List[str], language: str = "en") -> List[str]:
         - If no ingredients found, return [].
         """
         indexes_str = ""
-        llm_cache_file_prefix = f"alrg_{words_for_prompt[:12]}"
+        llm_cache_file_prefix = f"alrg_{words_for_prompt[:12]}_llm"
         cached_response = llm_cache.get(prompt, LLM_MODEL, llm_cache_file_prefix)
         if cached_response:
             indexes_str = cached_response
@@ -969,7 +1386,7 @@ def detect_allergens_with_llm (words: List[str], language: str = "en") -> List[s
         - If no ingredients found, return [].
         """
         indexes_str = ""
-        llm_cache_file_prefix = f"alrg_{words_for_prompt[:12]}"
+        llm_cache_file_prefix = f"alrg_{words_for_prompt[:12]}_llm"
         cached_response = llm_cache.get(prompt, LLM_MODEL, llm_cache_file_prefix)
         if cached_response:
             indexes_str = cached_response
@@ -1151,7 +1568,7 @@ def split_text_block_1(layout_block: LayoutTextBlock, ocr_result: OCRResult) -> 
     )
 
     # Check cache first
-    llm_cache_file_prefix = f"split_{joined_text[:12]}"
+    llm_cache_file_prefix = f"split_{joined_text[:12]}_llm"
     cached_result = llm_cache.get(user_prompt, LLM_MODEL, llm_cache_file_prefix)
     
     if cached_result:
@@ -1377,12 +1794,12 @@ def classify_text_block (ocr_result: OCRResult) -> str:
 
     # Create joined text for fallback bbox calculation
     joined_text = "".join([word.text for word in ocr_result.words])
-
+    
     # Get OpenRouter API key from environment variable
     openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
     if not openrouter_api_key:
         app_logger.error("labelguard", "OPENROUTER_API_KEY environment variable not set")
-        return TextBlockDetectionList(blocks=[])
+        return "E"  # Return category code "E" for "other" when API key is not available
     
     client = OpenAI(
         api_key=openrouter_api_key,
@@ -1498,19 +1915,22 @@ def clean_html_text(text: str) -> str:
     return text.strip()
 
 
-def extract_languages_from_etalon_files(label_image_path: str) -> List[str]:
+def extract_languages_from_etalon_files(label_image_path) -> List[str]:
     """
     Extract language codes from etalon files and convert them to BCP-47 format for OCR.
     
     Args:
-        label_image_path: Path to the label image file
+        label_image_path: Path to the label image file (Path or str)
         
     Returns:
         List of BCP-47 language codes for OCR processing
     """
     try:
+        # Handle both Path and str
+        if isinstance(label_image_path, str):
+            label_image_path = Path(label_image_path)
         # Get etalon text blocks
-        etalon_text_blocks = _get_etalon_text_blocks("", "", Path(label_image_path))
+        etalon_text_blocks = _get_etalon_text_blocks("", "", label_image_path)
         
         # Extract unique language codes from etalon
         # Etalon codes are in uppercase (e.g., "UK", "RU", "BA")
@@ -1545,9 +1965,71 @@ def extract_languages_from_etalon_files(label_image_path: str) -> List[str]:
         return ["sq", "sr", "hy", "ar", "az", "bg", "bs", "zh", "cs", "de", "et", "en", "es", "fr", "ka", "el", "hr", "hu", "he", "it", "ky", "kk", "lt", "lv", "sr-ME", "mk", "mn", "ms", "nl", "pl", "pt", "ro", "ru", "sl", "sk", "tg", "tk", "uk", "uz"]
 
 
-def _get_etalon_text_blocks(kmat: str, version: str, label_image_path: str) -> List[dict]:
-    # Read and clean JSON file to handle control characters
-    etalon_path = label_image_path.parent / f'{label_image_path.stem}_etalon.json'
+def _process_etalon_image(etalon_path_str: str) -> List[dict]:
+    """
+    Process etalon image: run OCR and extract text blocks in etalon format.
+    
+    Args:
+        etalon_path_str: Path to etalon image file
+        
+    Returns:
+        List of etalon text blocks in format: [{"type_": str, "LANGUAGES": str, "text": str}, ...]
+    """
+    # Load etalon image
+    etalon_path = ROOT_DIR / etalon_path_str.lstrip('/')
+    if not etalon_path.exists():
+        app_logger.error(SERVICE_NAME, f"Etalon image not found: {etalon_path}")
+        return []
+    
+    etalon_image = Image.open(etalon_path)
+    
+    # Run layout detection on etalon image
+    layout_detector = LayoutDetector()
+    etalon_layout_blocks = layout_detector.extract_blocks(etalon_path)
+    
+    app_logger.info(SERVICE_NAME, f"Detected {len(etalon_layout_blocks)} blocks in etalon image")
+    
+    # Run OCR on each block
+    ocr_processor = VisionOCRProcessor()
+    etalon_text_blocks = []
+    
+    for layout_block in etalon_layout_blocks:
+        cropped = layout_block.image_crop
+        
+        # Run OCR
+        cache_dir = artifact_service.get_service_dir(SERVICE_NAME) / "cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        etalon_stem = Path(etalon_path_str).stem
+        json_vision_filename = str(cache_dir / f"{etalon_stem}_{layout_block.index}_vision.json")
+        
+        ocr_result = ocr_processor.process(
+            cropped,
+            input_filename=str(etalon_path),
+            json_vision_filename=json_vision_filename,
+            language_hints=[]  # No hints for etalon
+        )
+        
+        # Classify block type
+        block_type = classify_text_block(ocr_result)
+        
+        # Create etalon text block in expected format
+        etalon_block = {
+            "type_": block_type,
+            "LANGUAGES": ocr_result.language.upper() if ocr_result.language else None,  # Uppercase for etalon format
+            "text": clean_html_text(ocr_result.text)
+        }
+        etalon_text_blocks.append(etalon_block)
+    
+    app_logger.info(SERVICE_NAME, f"Processed etalon image: {len(etalon_text_blocks)} text blocks extracted")
+    return etalon_text_blocks
+
+
+def _get_etalon_text_blocks(kmat: str, version: str, etalon_path_str) -> List[dict]:
+    """
+    Legacy function: Read etalon data from JSON file.
+    Used as fallback when etalon_path is not provided.
+    """
+    etalon_path = ROOT_DIR / etalon_path_str.lstrip('/')
     if not etalon_path.exists():
         app_logger.error(SERVICE_NAME, f"Etalon file not found: {etalon_path}")
         return []
@@ -1569,24 +2051,26 @@ def _get_etalon_text_blocks(kmat: str, version: str, label_image_path: str) -> L
     return etalon_bank
 
 if __name__ == "__main__":
-    # Process all JPG files in the LabelGuard dataset directory
-    dataset_dir = ROOT_DIR / "assets" / "labelguard" / "datasets" 
-    #jpg_files = list(dataset_dir.glob("Yummi-Gummi_Cheesecakes_70g_VKF_v271124C__Text.jpg"))
-    jpg_files = list(dataset_dir.glob("*.jpg"))
+    # Test analyze() function
+    # Example: Initial detection (empty blocks)
+    request_json = {
+        'image_path': 'artifacts/labelguard/MС_Lemon_180g_UA_FP_KKF_v230925B__Text.jpg',
+        "etalon_path" : "artifacts/labelguard/MС_Lemon_180g_UA_FP_KKF_v230925B__Text_etalon.json",
+        'blocks': [],  # Empty = initial detection
+        'kmat': 'MС_Lemon_180g',
+        'version': 'v230925B'
+    }
     
-    test_labels = []
-    for i, image_path in enumerate(jpg_files):
-        kmat = f"TEST{i+1:03d}_{image_path.stem.split('_')[0]}"
-        test_labels.append(
-            LabelInput(
-                kmat=kmat,
-                version="v1.0", 
-                label_image=Image.open(image_path),
-                label_image_path=image_path
-            )
-        )
-
-    results = process_labels(test_labels)
+    print("Running analyze() function...")
+    result = analyze(request_json)
+    
+    print(f"\n✅ Analysis complete!")
+    print(f"   Found {len(result.text_blocks)} text blocks")
+    print(f"   Validation results: {len(result.rule_check_results)}")
+    print(f"   JSON saved to: artifacts/labelguard/{result.original_filename}.json")
+    print(f"   Image saved to: artifacts/labelguard/{result.original_filename}.jpg")
+    print("\n   Now refresh your HTML page to see the results!")
+    print(f"   URL: viewer.html?data_id={result.original_filename}")
 
 
     """
@@ -1598,4 +2082,3 @@ if __name__ == "__main__":
 6 аліргенна фраза (жирна)
 7 числа маюсть спіпадати в кожній мові(і кількість також)
     """
-    

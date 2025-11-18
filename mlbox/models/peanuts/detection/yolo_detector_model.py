@@ -41,17 +41,6 @@ class YOLOPeanutsDetector(AbstractPeanutsDetector):
         for det in yolo_detections:
             sv_detection = sv.Detections.from_ultralytics(det)
             sv_detection.xyxy = sv_detection.xyxy.astype(int)
-            
-            """
-            for i, mask in enumerate(sv_detection.mask):
-                x1, y1, x2, y2 = map(int, sv_detection.xyxy[i])
-                # Create a binary mask with the same size as the original mask
-                binary_mask = np.zeros_like(mask, dtype=bool)
-                binary_mask[y1:y2, x1:x2] = True
-                
-                # Perform an AND operation to get the cropped mask
-                sv_detection.mask[i] = np.logical_and(mask, binary_mask)
-            """             
             sv_detections.append(sv_detection)
 
         return sv_detections

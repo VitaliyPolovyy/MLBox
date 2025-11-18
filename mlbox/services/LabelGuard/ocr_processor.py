@@ -124,13 +124,20 @@ class VisionOCRProcessor(BaseOCRProcessor):
     def _save_vision_result(self, vision_result: OCRResult, json_vision_filename: str):
         """Save VisionResult as JSON file"""
         try:
-            
-            filepath = artifact_service.get_service_dir(SERVICE_NAME) / json_vision_filename
+            # json_vision_filename can be either:
+            # - Full path (if passed from analyze function with cache/ subdirectory)
+            # - Relative path (legacy usage)
+            if Path(json_vision_filename).is_absolute() or '/' in json_vision_filename or '\\' in json_vision_filename:
+                # It's already a full path or contains path separators
+                filepath = Path(json_vision_filename)
+            else:
+                # Legacy: treat as relative to service directory
+                filepath = artifact_service.get_service_dir(SERVICE_NAME) / json_vision_filename
 
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(vision_result.to_dict(), f, indent=2, ensure_ascii=False)
 
-            app_logger.debug("ocr_processor", f"Saved Vision result: {json_vision_filename}")
+            app_logger.debug("ocr_processor", f"Saved Vision result: {filepath}")
                 
         except Exception as e:
             app_logger.error("ocr_processor", f"Error saving Vision result: {str(e)}")

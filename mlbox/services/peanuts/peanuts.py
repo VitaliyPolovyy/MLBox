@@ -1,9 +1,9 @@
-import base64  # Pylint warning: Missing module docstring
 import os
-import traceback
+import base64
 from io import BytesIO
 from pathlib import Path
-from typing import Any, List, Optional, Tuple
+import traceback
+from typing import List, Optional, Tuple
 import cv2
 import httpx
 import numpy as np
@@ -173,6 +173,12 @@ def process_peanuts_images(
             preprocessed_images, verbose=True, imgsz=1024, conf=0.6
         )
         app_logger.info(SERVICE_NAME, f"Detection completed | detected_objects={sum(len(det.xyxy) for det in sv_detections)}")
+
+        # Apply NMS to remove overlapping boxes
+        nms_iou_threshold = 0.5
+        sv_detections = [det.with_nms(threshold=nms_iou_threshold) for det in sv_detections]
+        app_logger.info(SERVICE_NAME, f"NMS applied | remaining_objects={sum(len(det.xyxy) for det in sv_detections)}")
+
     except Exception as e:
         error_trace = traceback.format_exc()
         app_logger.error(SERVICE_NAME, f"Detection failed | error={str(e)}\n{error_trace}")
@@ -451,14 +457,13 @@ def post_rest_request_to_client(
 
     peanut_response = BaseResponseJson(
         status="Success",
-        message="Processing completed successfully.",
-        service_name="peanuts",
+        message="Successfully sent the result to ERP.",
+        service_name=SERVICE_NAME,
         timestamp=pd.Timestamp.now().isoformat(),
         data=peanut_data.to_json()  # pylint: disable=no-member
     )
     
     # Send the request
-    """
     response = httpx.post(endpoint, headers=headers, json={ "responseJson": peanut_response.to_json() }) # pylint: disable=no-member
 
     # Check response status
@@ -467,7 +472,7 @@ def post_rest_request_to_client(
     else:
         app_logger.error(SERVICE_NAME, f"Failed to send the result to ERP. Status code: {response.status_code}, Response: {response.text}")
         raise Exception(f"Failed to send the result to ERP. Status code: {response.status_code}, Response: {response.text}")
-    """
+    
 
 def save_images_with_annotations(
     images: List[np.ndarray],
@@ -594,7 +599,7 @@ def test_process_requests(input_folder: Path, output_folder: Path):
 
     # Gather all image files from the input folder
     image_files = list(
-        input_folder.glob("*.jpg")
+        input_folder.glob("30_10_2025_16_34.jpg")
     )  # You can filter by extension, e.g. "*.jpg" if needed
 
     # Prepare requests by reading each image
