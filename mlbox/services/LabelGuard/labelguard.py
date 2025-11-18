@@ -1794,12 +1794,12 @@ def classify_text_block (ocr_result: OCRResult) -> str:
 
     # Create joined text for fallback bbox calculation
     joined_text = "".join([word.text for word in ocr_result.words])
-    
+
     # Get OpenRouter API key from environment variable
     openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
     if not openrouter_api_key:
         app_logger.error("labelguard", "OPENROUTER_API_KEY environment variable not set")
-        return "E"  # Return category code "E" for "other" when API key is not available
+        return TextBlockDetectionList(blocks=[])
     
     client = OpenAI(
         api_key=openrouter_api_key,
