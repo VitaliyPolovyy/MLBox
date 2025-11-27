@@ -1,18 +1,17 @@
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import List
 from abc import ABC, abstractmethod
-
+import os
 import io
 import json
 from pathlib import Path
-from dotenv import load_dotenv
 from google.cloud import vision
 from PIL import Image
 import numpy as np
 import regex
 from skimage import color
 from skimage.morphology import disk, opening
-from mlbox.settings import ROOT_DIR, LOG_LEVEL
+from mlbox.settings import ROOT_DIR
 from mlbox.utils.logger import get_logger, get_artifact_service
 
 
@@ -219,6 +218,7 @@ class VisionOCRProcessor(BaseOCRProcessor):
         
         # Check for existing Vision result from provided JSON file
         if json_vision_filename and Path(json_vision_filename).exists():
+            os.utime(json_vision_filename, None)  # sets mtime to now
             app_logger.debug("ocr_processor", f"Loading cached Vision result from {json_vision_filename}")
             with open(json_vision_filename, 'r', encoding='utf-8') as f:
                 data = json.load(f)

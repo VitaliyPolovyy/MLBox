@@ -56,7 +56,9 @@ class Logger:
         logger.warning(formatted_message)
     
     def error(self, service: str, message: str):
-        formatted_message = f"{service} | {message}"
+        # Escape curly braces in message to prevent loguru format string interpretation
+        escaped_message = message.replace('{', '{{').replace('}', '}}')
+        formatted_message = f"{service} | {escaped_message}"
         logger.error(formatted_message, exc_info=False)  # exc_info=False since tracebacks are included in message
     
     @property
@@ -82,13 +84,18 @@ class ArtifactService:
         service_dir.mkdir(parents=True, exist_ok=True)
         return service_dir
     
-    def save_artifact(self, service: str, file_name: str, data: Any):
-        """Save data as artifact to artifacts/service_name/filename"""
+    def save_artifact(self, service: str, file_name: str, data: Any, sub_folder: str = None):
+        """Save data as artifact to artifacts/service_name/filename or artifacts/service_name/sub_folder/filename"""
         # Get service directory (creates if doesn't exist)
         self.service_dir = self.get_service_dir(service)
 
         # Create artifact file path
-        artifact_path = self.service_dir / file_name
+        if sub_folder:
+            artifact_dir = self.service_dir / sub_folder
+            artifact_dir.mkdir(parents=True, exist_ok=True)
+            artifact_path = artifact_dir / file_name
+        else:
+            artifact_path = self.service_dir / file_name
         
         try:
             # Handle different data types
@@ -113,7 +120,10 @@ class ArtifactService:
                 with open(artifact_path, 'w', encoding='utf-8') as f:
                     f.write(str(data))
             
-            logger.debug(f"Artifact saved: {service}/{file_name}")
+            if sub_folder:
+                logger.debug(f"Artifact saved: {service}/{sub_folder}/{file_name}")
+            else:
+                logger.debug(f"Artifact saved: {service}/{file_name}")
             return str(artifact_path)
             
         except Exception as e:

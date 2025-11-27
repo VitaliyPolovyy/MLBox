@@ -48,6 +48,10 @@ class OnePeanutProcessingResult:
     image: Optional[PILImage.Image] = None  # Image of the peanut
     contour: Optional[np.ndarray] = None
     ellipse: Optional[Ellipse] = None
+    # Separated segmentation fields (for comparison only)
+    mask_separated: Optional[np.ndarray] = None  # Separated segmentation mask (full image coordinates)
+    contour_separated: Optional[np.ndarray] = None  # Contour from separated mask
+    ellipse_separated: Optional[Ellipse] = None  # Ellipse fitted from separated contour
 
     @property
     def real_class(self):

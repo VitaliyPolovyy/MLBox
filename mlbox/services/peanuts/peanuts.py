@@ -37,6 +37,8 @@ if env_file.exists():
 HF_TOKEN = os.getenv("HF_TOKEN")
 HF_PEANUT_SEG_REPO_ID = os.getenv("HF_PEANUT_SEG_REPO_ID")
 HF_PEANUT_SEG_FILE = os.getenv("HF_PEANUT_SEG_FILE")
+HF_PEANUT_SEG_SEPARATED_REPO_ID = os.getenv("HF_PEANUT_SEG_SEPARATED_REPO_ID")
+HF_PEANUT_SEG_SEPARATED_FILE = os.getenv("HF_PEANUT_SEG_SEPARATED_FILE")
 HF_PEANUT_CLS_REPO_ID = os.getenv("HF_PEANUT_CLS_REPO_ID")
 HF_PEANUT_CLS_FILE = os.getenv("HF_PEANUT_CLS_FILE")
 ERP_ENDPOINT = (
@@ -85,7 +87,84 @@ def process_requests(
         )
 
     return peanut_processing_results
+
+
+def process_peanuts_separated_segmentation(
+    preprocessed_images: List[np.ndarray],
+    sv_detections: List,
+    separated_seg_model_path: str,
+    padding: int = 10,
+) -> List[List[np.ndarray]]:
+    """
+    Process each detected peanut separately using cropped segmentation.
     
+    Args:
+        preprocessed_images: List of preprocessed full images
+        sv_detections: List of sv.Detections from full image (for bboxes)
+        separated_seg_model_path: Path to separated segmentation model
+        padding: Padding around bbox when cropping (default: 10)
+        
+    Returns:
+        List of lists of masks (one list per image, one mask per peanut)
+        Masks are in full image coordinates
+    """
+    app_logger.info(SERVICE_NAME, f"Loading separated segmentation model: {separated_seg_model_path}")
+    separated_detector = YOLOPeanutsDetector(separated_seg_model_path)
+    
+    all_separated_masks = []
+    
+    for preprocessed_image, sv_detection in zip(preprocessed_images, sv_detections):
+        separated_masks = []
+        h, w = preprocessed_image.shape[:2]
+        
+        for index in range(len(sv_detection.xyxy)):
+            xyxy = sv_detection.xyxy[index]
+            x1, y1, x2, y2 = map(int, xyxy)
+            
+            # Add padding to crop
+            x1_padded = max(0, x1 - padding)
+            y1_padded = max(0, y1 - padding)
+            x2_padded = min(w, x2 + padding)
+            y2_padded = min(h, y2 + padding)
+            
+            # Crop peanut
+            cropped_peanut = preprocessed_image[y1_padded:y2_padded, x1_padded:x2_padded]
+            
+            # Run segmentation on cropped image
+            cropped_detections = separated_detector.detect(
+                [cropped_peanut], verbose=False, imgsz=128, conf=0.5
+            )
+            
+            if cropped_detections and len(cropped_detections) > 0 and len(cropped_detections[0].mask) > 0:
+                # Get mask from cropped detection
+                cropped_mask = cropped_detections[0].mask[0]
+                cropped_h, cropped_w = cropped_mask.shape
+                crop_h_actual, crop_w_actual = y2_padded - y1_padded, x2_padded - x1_padded
+                
+                # Resize mask if needed (in case model output size differs from crop size)
+                if cropped_h != crop_h_actual or cropped_w != crop_w_actual:
+                    cropped_mask = cv2.resize(
+                        cropped_mask.astype(np.uint8),
+                        (crop_w_actual, crop_h_actual),
+                        interpolation=cv2.INTER_NEAREST
+                    ).astype(bool)
+                
+                # Create full-size mask and translate coordinates
+                full_mask = np.zeros((h, w), dtype=bool)
+                full_mask[y1_padded:y2_padded, x1_padded:x2_padded] = cropped_mask
+                separated_masks.append(full_mask)
+            else:
+                # Fallback: use bbox as mask if no detection
+                app_logger.warning(SERVICE_NAME, f"No separated segmentation detected for peanut {index}, using bbox fallback")
+                full_mask = np.zeros((h, w), dtype=bool)
+                full_mask[y1:y2, x1:x2] = True
+                separated_masks.append(full_mask)
+        
+        all_separated_masks.append(separated_masks)
+    
+    app_logger.info(SERVICE_NAME, f"Separated segmentation completed | images={len(all_separated_masks)}")
+    return all_separated_masks
+
 
 def process_peanuts_images(
     requests: List[PeanutProcessingRequest],
@@ -167,6 +246,22 @@ def process_peanuts_images(
         app_logger.error(SERVICE_NAME, f"Failed to initialize detector model | path={det_model_path} | error={str(e)}\n{error_trace}")
         raise
     
+    # Load separated segmentation model if configured
+    separated_detector = None
+    if HF_PEANUT_SEG_SEPARATED_REPO_ID and HF_PEANUT_SEG_SEPARATED_FILE:
+        try:
+            app_logger.info(SERVICE_NAME, f"Starting separated segmentation model download | repo_id={HF_PEANUT_SEG_SEPARATED_REPO_ID} | file={HF_PEANUT_SEG_SEPARATED_FILE}")
+            separated_seg_model_path = hf_hub_download(
+                repo_id=HF_PEANUT_SEG_SEPARATED_REPO_ID, filename=HF_PEANUT_SEG_SEPARATED_FILE, token=HF_TOKEN
+            )
+            app_logger.info(SERVICE_NAME, f"Separated segmentation model downloaded: {separated_seg_model_path}")
+            separated_detector = YOLOPeanutsDetector(separated_seg_model_path)
+            app_logger.info(SERVICE_NAME, f"Separated segmentation model initialized successfully")
+        except Exception as e:
+            error_trace = traceback.format_exc()
+            app_logger.error(SERVICE_NAME, f"Failed to load separated segmentation model | error={str(e)}\n{error_trace}")
+            raise
+    
     app_logger.info(SERVICE_NAME, f"Starting peanut detection | images_count={len(preprocessed_images)}")
     try:
         sv_detections = detector.detect(
@@ -227,7 +322,8 @@ def process_peanuts_images(
                 artifact_service.save_artifact(
                     service=SERVICE_NAME,
                     file_name=f"{index}.jpg",
-                    data=pil_image
+                    data=pil_image,
+                    sub_folder="temp"
                 )
 
             one_peanut_images.append(one_peanut_image)
@@ -241,14 +337,59 @@ def process_peanuts_images(
             center, axes, angle = cv2.fitEllipse(contour_reshaped)
             axes = (axes[0] * 0.9, axes[1] * 0.9)
             elipse = Ellipse(center=center, axes=axes, angle=angle)
+
+            mask_separated = None
+            contour_separated = None
+            ellipse_separated = None
+            
+            cropped_detections = separated_detector.detect(
+                [one_peanut_image], verbose=False, imgsz=128, conf=0.5
+            )
+            
+            if (cropped_detections and 
+                len(cropped_detections) > 0 and 
+                cropped_detections[0].mask is not None and 
+                len(cropped_detections[0].mask) > 0):
+                # Get mask from cropped detection
+                cropped_mask = cropped_detections[0].mask[0]
+                cropped_h, cropped_w = cropped_mask.shape
+                crop_h_actual, crop_w_actual = y2 - y1, x2 - x1
+                
+                # Resize mask if needed (model output might differ from crop size)
+                if cropped_h != crop_h_actual or cropped_w != crop_w_actual:
+                    cropped_mask = cv2.resize(
+                        cropped_mask.astype(np.uint8),
+                        (crop_w_actual, crop_h_actual),
+                        interpolation=cv2.INTER_NEAREST
+                    ).astype(bool)
+                
+                # Create full-size mask and translate coordinates
+                h, w = preprocessed_image.shape[:2]
+                full_mask = np.zeros((h, w), dtype=bool)
+                full_mask[y1:y2, x1:x2] = cropped_mask
+                mask_separated = full_mask
+                
+                # Find contour from full mask (already in full image coordinates)
+                contours_separated, _ = cv2.findContours(
+                    mask_separated.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE
+                )
+                contour_separated = max(contours_separated, key=cv2.contourArea)
+                contour_separated_reshaped = contour_separated.reshape(-1, 2)
+                center_separated, axes_separated, angle_separated = cv2.fitEllipse(contour_separated_reshaped)
+                axes_separated = (axes_separated[0] * 0.9, axes_separated[1] * 0.9)
+                ellipse_separated = Ellipse(center=center_separated, axes=axes_separated, angle=angle_separated)
+
             peanut = OnePeanutProcessingResult(
                 index=ordered_index,
                 xyxy=xyxy,
                 mask=mask,
+                mask_separated=mask_separated,
                 contour=contour,
+                contour_separated=contour_separated,
                 det_confidence=sv_detection.confidence[index],
                 image=PILImage.fromarray(one_peanut_image),
                 ellipse=elipse,
+                ellipse_separated=ellipse_separated,
             )
             ordered_index = ordered_index + 1
 
@@ -433,7 +574,79 @@ def prepare_excel(peanut_processing_result: PeanutProcessingResult) -> Path:
         openpyxl_image.height = openpyxl_image.height // 2
         result_image_sheet.add_image(openpyxl_image, "A1")
 
+    # Add comparison sheet if separated segmentation is available
+    if any(peanut.mask_separated is not None for peanut in peanut_processing_result.peanuts):
+        # Convert PIL Image (RGB) to numpy array and then to BGR for OpenCV
+        original_array = np.array(peanut_processing_result.original_image)
+        if len(original_array.shape) == 3 and original_array.shape[2] == 3:
+            # PIL Image is RGB, convert to BGR for OpenCV
+            original_array = cv2.cvtColor(original_array, cv2.COLOR_RGB2BGR)
+        comparison_image = create_comparison_image(
+            original_array,
+            peanut_processing_result.peanuts
+        )
+        
+        # Save comparison image to temp folder
+        comparison_filename = f"comparison_{Path(peanut_processing_result.original_image_filename).stem}.jpg"
+        artifact_service.save_artifact(
+            service=SERVICE_NAME,
+            file_name=comparison_filename,
+            data=comparison_image
+        )
+        
+        comparison_sheet = writer.book.create_sheet(title="Comparison")
+        image_stream = BytesIO()
+        comparison_image.save(image_stream, format="PNG")
+        image_stream.seek(0)
+        openpyxl_image = OpenPyxlImage(image_stream)
+        openpyxl_image.width = openpyxl_image.width // 2
+        openpyxl_image.height = openpyxl_image.height // 2
+        comparison_sheet.add_image(openpyxl_image, "A1")
+
     return excel_file
+
+
+def create_comparison_image(
+    preprocessed_image: np.ndarray,
+    peanuts: List[OnePeanutProcessingResult],
+) -> PILImage.Image:
+    """
+    Create comparison image with transparent masks for both segmentation approaches.
+    
+    Args:
+        preprocessed_image: Original preprocessed image (BGR format from OpenCV)
+        peanuts: List of peanut processing results
+        
+    Returns:
+        PIL Image with both masks overlaid (red for full image, green for separated)
+    """
+    # Start with original image (BGR format)
+    result_image = preprocessed_image.copy()
+    
+    # Ensure image is BGR (3 channels)
+    if len(result_image.shape) == 2:
+        result_image = cv2.cvtColor(result_image, cv2.COLOR_GRAY2BGR)
+    elif result_image.shape[2] == 4:
+        result_image = cv2.cvtColor(result_image, cv2.COLOR_BGRA2BGR)
+    
+    h, w = result_image.shape[:2]
+    
+    # Draw contours for each peanut
+    for peanut in peanuts:
+        # Draw full image segmentation contour (red)
+        if peanut.contour is not None:
+            # Draw red contour (BGR format: Blue=0, Green=0, Red=255)
+            cv2.drawContours(result_image, [peanut.contour], -1, (0, 0, 255), 2)
+        
+        # Draw separated segmentation contour (green)
+        if peanut.contour_separated is not None:
+            # Draw green contour (BGR format: Blue=0, Green=255, Red=0)
+            cv2.drawContours(result_image, [peanut.contour_separated], -1, (0, 255, 0), 2)
+    
+    # Convert BGR to RGB for PIL
+    result_image = cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB)
+    
+    return PILImage.fromarray(result_image)
 
 
 def post_rest_request_to_client(
@@ -599,7 +812,7 @@ def test_process_requests(input_folder: Path, output_folder: Path):
 
     # Gather all image files from the input folder
     image_files = list(
-        input_folder.glob("30_10_2025_16_34.jpg")
+        input_folder.glob("30_10_2025_16_29.jpg")
     )  # You can filter by extension, e.g. "*.jpg" if needed
 
     # Prepare requests by reading each image

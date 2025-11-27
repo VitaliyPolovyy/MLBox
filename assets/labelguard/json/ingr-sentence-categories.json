@@ -1,0 +1,29 @@
+{
+  "A": {
+    "name": "Назва продукту",
+    "description": "Sentences that contain the product name or its marketing name, possibly with language markers (e.g. '(UA)', '(RO)')."
+  },
+  "B": {
+    "name": "Алергенна фраза",
+    "description": "Sentences that explicitly list possible allergens or state that the product may contain certain allergens."
+  },
+  "C": {
+    "name": "Умови зберігання",
+    "description": "Sentences that describe storage instructions, including temperature, humidity and preservation conditions."
+  },
+  "D": {
+    "name": "Склад / інгредієнти",
+    "description": "Sentences that list ingredients or composition of the product."
+  },
+  "E": {
+    "name": "Контакти",
+    "description": "Sentences that contain contact information such as company name, address, phone, email or website."
+  },
+  "Z": {
+    "name": "Невідомо",
+    "description": "Unclassified or ambiguous text that does not clearly fit any of the other categories."
+  }
+}
+
+
+

@@ -47,11 +47,16 @@ RUN if [ -n "$HF_TOKEN" ] && [ -n "$HF_PEANUT_CLS_REPO_ID" ]; then \
     print('Models downloaded successfully')"; \
     fi
 
+# Create cache directory for matplotlib with proper permissions
+RUN mkdir -p /tmp/matplotlib && \
+    chown -R 1000:1000 /tmp/matplotlib && \
+    chmod -R 755 /tmp/matplotlib
+
 USER appuser
 
-EXPOSE 8000
+EXPOSE 8001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD serve status | grep -A 3 'Peanuts:' | grep 'status:' | grep -q 'HEALTHY' || exit 1
+  CMD serve status | grep -E '(Peanuts|LabelGuard):' | grep 'status:' | grep -q 'HEALTHY' || exit 1
 
-# Start Ray then your app; 'exec' forwards signals to Python
-CMD ["bash","-lc","ray start --head --dashboard-host=0.0.0.0 && python deployments/peanut_deployment.py && tail -f /dev/null"]
+# Start Ray then deploy all services from YAML config
+CMD ["bash","-lc","ray start --head --dashboard-host=0.0.0.0 && serve run deployments/ray_serv.yaml"]

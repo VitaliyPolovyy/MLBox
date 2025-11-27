@@ -54,6 +54,18 @@ class LabelGuard:
         return response_data
     
     async def __call__(self, request: Request):
+        # Global CORS handling for preflight requests
+        if request.method == "OPTIONS":
+            # Allow frontend (e.g. Live Preview on a different port) to talk to this service
+            return JSONResponse(
+                {},
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type",
+                },
+            )
+
         # Route based on path
         path = request.url.path
         app_logger.info(self.SERVICE_NAME, f"Received request: {request.method} {path}")
@@ -62,10 +74,25 @@ class LabelGuard:
         if path.startswith("/labelguard/"):
             path = path[len("/labelguard"):]  # Remove /labelguard but keep the leading /
         
+        # Handle /upload endpoint
+        if path.startswith("/upload"):
+            app_logger.info(self.SERVICE_NAME, f"Routing to upload_endpoint for: {path}")
+            return await self.upload_endpoint(request)
+        
         # Handle /analyze endpoint
         if path.endswith("/analyze") or path.endswith("/analyze/"):
             app_logger.info(self.SERVICE_NAME, f"Routing to analyze_endpoint for: {path}")
             return await self.analyze_endpoint(request)
+        
+        # Handle viewer.html
+        if path == "/viewer.html" or path.startswith("/viewer.html"):
+            app_logger.info(self.SERVICE_NAME, f"Routing to serve_viewer_html for: {path}")
+            return await self.serve_viewer_html(request)
+        
+        # Handle static assets (JS, CSS, etc.)
+        if path.startswith("/assets/"):
+            app_logger.info(self.SERVICE_NAME, f"Routing to serve_static_file for: {path}")
+            return await self.serve_static_file(request)
         
         # Handle static file serving for /artifacts/ paths
         if path.startswith("/artifacts/"):
@@ -83,6 +110,104 @@ class LabelGuard:
                     return HTMLResponse(content=result[0]["data"]["html_report"])
         
         return result[0] if len(result) == 1 else result
+    
+    async def upload_endpoint(self, request: Request):
+        """Handle POST /labelguard/upload endpoint - upload files and return paths"""
+        # Handle CORS preflight
+        if request.method == "OPTIONS":
+            return JSONResponse(
+                {},
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type",
+                }
+            )
+        
+        if request.method != "POST":
+            return JSONResponse(
+                {"status": "error", "message": "Method not allowed"},
+                status_code=405,
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+        
+        try:
+            # Parse multipart form data
+            form = await request.form()
+            
+            # Get image file
+            image_file = form.get("image")
+            if not image_file:
+                return JSONResponse(
+                    {"status": "error", "message": "Image file is required"},
+                    status_code=400,
+                    headers={"Access-Control-Allow-Origin": "*"}
+                )
+            
+            # Read image data
+            image_data = await image_file.read()
+            image = PILImage.open(BytesIO(image_data))
+            
+            # Get optional etalon file
+            etalon_file = form.get("etalon")
+            etalon_data = None
+            if etalon_file:
+                etalon_data = await etalon_file.read()
+            
+            # Get optional filename, kmat, version from form
+            filename = form.get("filename", image_file.filename or "uploaded_file")
+            kmat = form.get("kmat", "UNKNOWN")
+            version = form.get("version", "v1.0")
+            
+            # Remove file extension from filename if present
+            filename_stem = Path(filename).stem
+            
+            # Create artifacts directory
+            artifacts_dir = ROOT_DIR / "artifacts" / "labelguard"
+            artifacts_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Save image
+            image_path = artifacts_dir / f"{filename_stem}.jpg"
+            image.save(image_path, "JPEG")
+            app_logger.info(self.SERVICE_NAME, f"Saved uploaded image to: {image_path}")
+            
+            # Save etalon if provided
+            etalon_path = None
+            if etalon_data:
+                etalon_path = artifacts_dir / f"{filename_stem}_etalon.json"
+                with open(etalon_path, 'wb') as f:
+                    f.write(etalon_data)
+                app_logger.info(self.SERVICE_NAME, f"Saved uploaded etalon to: {etalon_path}")
+            
+            # Return paths (relative to project root)
+            response_data = {
+                "status": "success",
+                "image_path": f"artifacts/labelguard/{filename_stem}.jpg",
+                "filename": filename_stem,
+                "kmat": kmat,
+                "version": version
+            }
+            
+            if etalon_path:
+                response_data["etalon_path"] = f"artifacts/labelguard/{filename_stem}_etalon.json"
+            
+            return JSONResponse(
+                response_data,
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+            
+        except Exception as e:
+            error_trace = traceback.format_exc()
+            app_logger.error(self.SERVICE_NAME, f"Upload endpoint error: {str(e)}\n{error_trace}")
+            return JSONResponse(
+                {
+                    "status": "error",
+                    "message": str(e),
+                    "stack": error_trace
+                },
+                status_code=500,
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
     
     async def analyze_endpoint(self, request: Request):
         """Handle POST /labelguard/analyze endpoint"""
@@ -107,6 +232,7 @@ class LabelGuard:
         try:
             # Parse request body
             body = await request.json()
+            app_logger.debug(self.SERVICE_NAME, f"Analyze request body: {body}")
             
             # Extract parameters
             image_path = body.get("image_path")
@@ -114,6 +240,13 @@ class LabelGuard:
             kmat = body.get("kmat", "UNKNOWN")
             version = body.get("version", "v1.0")
             etalon = body.get("etalon")
+            etalon_path = body.get("etalon_path")
+            
+            # Strip /labelguard route prefix from paths if present
+            if image_path and image_path.startswith('/labelguard/'):
+                image_path = image_path[len('/labelguard'):]  # Remove /labelguard but keep the leading /
+            if etalon_path and etalon_path.startswith('/labelguard/'):
+                etalon_path = etalon_path[len('/labelguard'):]  # Remove /labelguard but keep the leading /
             
             app_logger.info(self.SERVICE_NAME, f"Analyze request: kmat={kmat}, version={version}, blocks={len(blocks)}")
             
@@ -125,10 +258,13 @@ class LabelGuard:
                 "image_path": image_path,
                 "blocks": blocks,
                 "kmat": kmat,
-                "version": version
+                "version": version,
             }
             if etalon:
                 request_json["etalon"] = etalon
+            if etalon_path:
+                # Preferred explicit etalon path, e.g. artifacts/labelguard/<name>_etalon.json
+                request_json["etalon_path"] = etalon_path
             
             # Call analyze function
             result = labelguard.analyze(request_json)
@@ -151,6 +287,8 @@ class LabelGuard:
                     from shutil import copyfile
                     copyfile(str(image_full_path), str(image_file))
                     app_logger.info(self.SERVICE_NAME, f"Saved image to {image_file}")
+                else:
+                    app_logger.error(self.SERVICE_NAME, f"Image not found at path: {image_full_path}")
             
             # Serialize result to JSON
             result_json = result.to_json()
@@ -198,8 +336,30 @@ class LabelGuard:
                 headers={"Access-Control-Allow-Origin": "*"}
             )
     
+    async def serve_viewer_html(self, request: Request):
+        """Serve viewer.html file"""
+        viewer_html_path = ROOT_DIR / "assets" / "labelguard" / "html" / "viewer.html"
+        
+        if not viewer_html_path.exists():
+            return JSONResponse(
+                {"status": "error", "message": "viewer.html not found"},
+                status_code=404,
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+        
+        with open(viewer_html_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        return HTMLResponse(
+            content=html_content,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Content-Type": "text/html; charset=utf-8"
+            }
+        )
+    
     async def serve_static_file(self, request: Request):
-        """Serve static files from /artifacts/ directory"""
+        """Serve static files from /artifacts/ and /assets/ directories"""
         
         path = request.url.path
         app_logger.info(self.SERVICE_NAME, f"serve_static_file called with path: {path}")
@@ -208,23 +368,29 @@ class LabelGuard:
         if path.startswith("/labelguard/"):
             path = path[len("/labelguard"):]  # Remove /labelguard but keep the leading /
         
-        # Remove leading /artifacts/ to get relative path
+        # Handle /artifacts/ paths
         if path.startswith("/artifacts/"):
             relative_path = path[len("/artifacts/"):]
+            base_dir = ROOT_DIR / "artifacts"
+        # Handle /assets/ paths
+        elif path.startswith("/assets/"):
+            relative_path = path[len("/assets/"):]
+            base_dir = ROOT_DIR / "assets"
         else:
             relative_path = path.lstrip("/")
+            base_dir = ROOT_DIR
         
         # URL decode the path to handle special characters (Cyrillic, etc.)
         relative_path = unquote(relative_path)
         
         # Construct full file path
-        file_path = ROOT_DIR / "artifacts" / relative_path
+        file_path = base_dir / relative_path
         
         app_logger.debug(self.SERVICE_NAME, f"Serving static file: {file_path} (exists: {file_path.exists()})")
         
-        # Security check: ensure path is within artifacts directory
+        # Security check: ensure path is within allowed directories
         try:
-            file_path.resolve().relative_to(ROOT_DIR / "artifacts")
+            file_path.resolve().relative_to(base_dir)
         except ValueError:
             return JSONResponse(
                 {"status": "error", "message": "Invalid path"},
@@ -247,6 +413,12 @@ class LabelGuard:
             media_type = "image/gif"
         elif file_path.suffix.lower() == '.json':
             media_type = "application/json"
+        elif file_path.suffix.lower() == '.js':
+            media_type = "application/javascript"
+        elif file_path.suffix.lower() == '.css':
+            media_type = "text/css"
+        elif file_path.suffix.lower() == '.html':
+            media_type = "text/html"
         else:
             media_type = "application/octet-stream"
         

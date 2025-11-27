@@ -10,8 +10,11 @@ let offsetX = 0, offsetY = 0;
 let isDragging = false;
 let startX = 0, startY = 0;
 
-// Bbox editing state (always in edit mode)
-let editMode = true; // Always true - always in edit mode
+// Bbox editing state
+// editMode === true means the currently selected block is in edit mode
+// and can be moved/resized. When false, blocks are only selectable and
+// the image pans on drag.
+let editMode = false;
 let selectedBboxIndex = null;
 let isResizing = false;
 let resizeHandle = null; // 'nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w', 'move'
@@ -25,8 +28,11 @@ const HANDLE_SIZE = 8;
 // Global variable for data
 let LABELGUARD_DATA = null;
 
-// Global variable for categories (code -> name mapping)
+// Global variable for text block categories (code -> name mapping)
 let CATEGORIES = {};
+
+// Global variable for sentence categories (code -> name mapping)
+let SENTENCE_CATEGORIES = {};
 
 // Server configuration
 // For development: if using Live Preview (port 3000), use relative paths
@@ -59,7 +65,8 @@ async function loadCategories() {
         if (USE_RELATIVE_PATHS) {
             categoriesPath = '../../../assets/labelguard/json/data-categories.json';
         } else {
-            categoriesPath = `${API_SERVER_URL}/assets/labelguard/json/data-categories.json`;
+            // Ray Serve: add /labelguard route prefix
+            categoriesPath = `${API_SERVER_URL}/labelguard/assets/labelguard/json/data-categories.json`;
         }
         
         const response = await fetch(categoriesPath);
@@ -78,6 +85,28 @@ async function loadCategories() {
     }
 }
 
+// Load sentence categories for \"Структура текста\" section
+async function loadSentenceCategories() {
+    try {
+        let path;
+        if (USE_RELATIVE_PATHS) {
+            path = '../../../assets/labelguard/json/ingr-sentence-categories.json';
+        } else {
+            // Ray Serve: add /labelguard route prefix
+            path = `${API_SERVER_URL}/labelguard/assets/labelguard/json/ingr-sentence-categories.json`;
+        }
+        const response = await fetch(path);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        SENTENCE_CATEGORIES = await response.json();
+        console.log('Sentence categories loaded:', SENTENCE_CATEGORIES);
+    } catch (error) {
+        console.error('Failed to load sentence categories:', error);
+        SENTENCE_CATEGORIES = {};
+    }
+}
+
 // Populate category dropdown with code -> name mapping
 function populateCategoryDropdown() {
     const categorySelect = document.getElementById('categorySelect');
@@ -90,22 +119,24 @@ function populateCategoryDropdown() {
     for (const [code, info] of Object.entries(CATEGORIES)) {
         const option = document.createElement('option');
         option.value = code;  // Store code as value
-        option.textContent = `${code} - ${info.name}`;  // Display: "A - ingredients"
+        // Display only human-readable name from JSON, without code letter
+        option.textContent = info.name || code;
         categorySelect.appendChild(option);
     }
 }
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', async function() {
-    console.log('DOM loaded');
+// Handle both cases: script loaded before or after DOMContentLoaded
+async function initializeUI() {
+    console.log('DOM loaded, initializing UI');
     
     canvas = document.getElementById('labelCanvas');
     ctx = canvas.getContext('2d');
     const msgDiv = document.getElementById('msgContent');
-    const debugInfo = document.getElementById('debugInfo');
     
     // Load categories first
     await loadCategories();
+    await loadSentenceCategories();
     
     // Get data_id from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
@@ -160,7 +191,74 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Setup event listeners
     setupEventListeners();
-});
+
+    // Setup resizable split between image and message panels
+    setupSplitPane();
+}
+
+// Initialize when DOM is ready - handle both early and late script loading
+if (document.readyState === 'loading') {
+    // DOM hasn't loaded yet, wait for it
+    document.addEventListener('DOMContentLoaded', initializeUI);
+} else {
+    // DOM already loaded (script loaded dynamically after page load)
+    initializeUI();
+}
+
+// Make the vertical separator between image and details panel draggable
+function setupSplitPane() {
+    const imagePanel = document.getElementById('imagePanel');
+    const messagePanel = document.getElementById('messagePanel');
+    const divider = document.getElementById('divider');
+
+    if (!imagePanel || !messagePanel || !divider) {
+        console.warn('SplitPane: required elements not found');
+        return;
+    }
+
+    let isResizing = false;
+
+    divider.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        isResizing = true;
+        document.body.classList.add('resizing');
+        console.log('SplitPane: start resizing');
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+
+        const totalWidth = window.innerWidth;
+        const minPercent = 20;
+        const maxPercent = 80;
+
+        let leftPercent = (e.clientX / totalWidth) * 100;
+        if (leftPercent < minPercent) leftPercent = minPercent;
+        if (leftPercent > maxPercent) leftPercent = maxPercent;
+
+        imagePanel.style.flex = `0 0 ${leftPercent}%`;
+        messagePanel.style.flex = `0 0 ${100 - leftPercent}%`;
+
+        // Recompute canvas scale and offset to keep image centered in resized panel
+        if (img && canvas) {
+            const panelWidth = imagePanel.clientWidth;
+            const panelHeight = imagePanel.clientHeight;
+            const scaleX = (panelWidth - 50) / img.width;
+            const scaleY = (panelHeight - 50) / img.height;
+            scale = Math.min(scaleX, scaleY, 1);
+            offsetX = (panelWidth - img.width * scale) / 2;
+            offsetY = (panelHeight - img.height * scale) / 2;
+            drawCanvas();
+        }
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (!isResizing) return;
+        isResizing = false;
+        document.body.classList.remove('resizing');
+        console.log('SplitPane: stop resizing');
+    });
+}
 
 // Load data and render UI
 function loadData(data) {
@@ -286,36 +384,21 @@ function renderBboxes() {
         const results = blockResults[block.index] || [];
         const hasError = results.some(r => !r.passed);
         const color = hasError ? '#ff0000' : '#00ff00';
-        const isSelected = editMode && selectedBboxIndex === block.index;
-        const isHovered = editMode && hoveredBboxIndex === block.index;
+        const isSelected = selectedBboxIndex === block.index;
+        const isHovered = hoveredBboxIndex === block.index;
         
-        // Draw bbox outline (thicker if selected/hovered in edit mode)
+        // Draw bbox outline (thicker if selected/hovered)
         ctx.strokeStyle = color;
         ctx.lineWidth = isSelected ? 5 : (isHovered ? 4 : 3);
         ctx.strokeRect(x1, y1, width, height);
         
-        // Draw selection highlight in edit mode
+        // Draw selection highlight only when in edit mode
         if (editMode && isSelected) {
             ctx.fillStyle = 'rgba(100, 150, 255, 0.2)';
             ctx.fillRect(x1, y1, width, height);
         }
         
-        // Draw block index and type label
-        ctx.fillStyle = color;
-        ctx.font = 'bold 16px Arial';
-        // Show category name if available, otherwise show code
-        let categoryDisplay = '';
-        if (block.type) {
-            if (CATEGORIES[block.type] && CATEGORIES[block.type].name) {
-                categoryDisplay = `${block.type} - ${CATEGORIES[block.type].name}`;
-            } else {
-                categoryDisplay = block.type;  // Fallback to code if name not found
-            }
-        }
-        const labelText = `${block.index}${categoryDisplay ? ' | ' + categoryDisplay : ''}`;
-        ctx.fillText(labelText, x2 - 80, y2 - 5);
-        
-        // Draw resize handles in edit mode
+        // Draw resize handles only when in edit mode
         if (editMode && isSelected) {
             drawResizeHandles(x1, y1, x2, y2);
         }
@@ -377,13 +460,19 @@ function renderErrorHighlights() {
 function renderErrorList() {
     const ruleResults = LABELGUARD_DATA.labelProcessingResult.rule_check_results;
     const msgDiv = document.getElementById('msgContent');
+    const filterPanel = document.getElementById('filterPanel');
+    
+    // In error list mode, show the filter panel
+    if (filterPanel) {
+        filterPanel.style.display = 'block';
+    }
     
     // Count errors
     const criticalErrors = ruleResults.filter(r => !r.passed);
     const passedCount = ruleResults.filter(r => r.passed).length;
     
     if (criticalErrors.length === 0) {
-        msgDiv.innerHTML = '<div style="font-weight: bold; font-size: 22px; color: #4CAF50;">✅ Немає критичних помилок!</div>';
+        msgDiv.innerHTML = '<div class="lg-heading lg-heading--ok">✅ Немає критичних помилок!</div>';
         return;
     }
     
@@ -399,27 +488,51 @@ function renderErrorList() {
         }
     });
     
-    let html = `<div style="font-weight: bold; font-size: 22px; margin-bottom: 5px; color: #d00;">❌ Критичних помилок - ${criticalErrors.length}</div>`;
-    html += `<div style="font-weight: bold; font-size: 22px; margin-bottom: 15px;">✅ Всього перевірок - ${passedCount}</div>`;
-    html += '<hr style="margin: 10px 0; border: 0; border-top: 6px solid #000;">';
+    let html = `<div class="lg-heading lg-heading--error">❌ Критичних помилок - ${criticalErrors.length}</div>`;
+    html += `<div class="lg-heading">✅ Всього перевірок - ${passedCount}</div>`;
+    html += '<hr class="lg-separator">';
     
     Object.keys(errorsByBlock).forEach(blockId => {
         const block = LABELGUARD_DATA.labelProcessingResult.text_blocks.find(b => b.index === blockId);
         const errors = errorsByBlock[blockId];
         
-        html += `<div style="margin-bottom: 20px;">`;
-        html += `<div style="background-color: #f0f0f0; padding: 8px; margin-bottom: 10px; border-radius: 4px; font-weight: bold;">`;
-        // Show category name if available, otherwise show code
-        let categoryDisplay = block ? (block.type || 'N/A') : 'N/A';
-        if (block && block.type && CATEGORIES[block.type] && CATEGORIES[block.type].name) {
-            categoryDisplay = `${block.type} - ${CATEGORIES[block.type].name}`;
-        }
-        html += `📋 Block #${blockId} | Type: ${categoryDisplay}`;
-        html += `</div>`;
+        html += `<div class="lg-section lg-error-block">`;
         
+        // Header: category name + languages + block index, plus preview text
+        let categoryName = 'N/A';
+        if (block) {
+            if (block.type && CATEGORIES[block.type] && CATEGORIES[block.type].name) {
+                categoryName = CATEGORIES[block.type].name;
+            } else if (block.type) {
+                categoryName = block.type;
+            }
+        }
+        const languages = block
+            ? (Array.isArray(block.languages)
+                ? block.languages
+                : (block.languages ? [block.languages] : []))
+            : [];
+        const langPart = languages.length ? ` (${languages.join(', ')})` : '';
+
+        // Build header text with inline preview
+        let headerHtml = `${categoryName}${langPart} #${blockId}`;
+
+        // Text preview: first part of block text, if available, appended inline
+        if (block && block.text) {
+            const previewLimit = 140;
+            let preview = block.text.trim();
+            if (preview.length > previewLimit) {
+                preview = preview.substring(0, previewLimit) + '...';
+            }
+            headerHtml += ` <span class="lg-muted">${preview}</span>`;
+        }
+        
+        html += `<div class="lg-block-header">${headerHtml}</div>`;
+        
+        // Per-rule error details
         errors.forEach(error => {
             if (error.html_details) {
-                html += `<div class="rule-error" data-rule-${error.rule_name}>${error.html_details}</div>`;
+                html += `<div class="rule-error lg-rule-error" data-rule-${error.rule_name}>${error.html_details}</div>`;
             }
         });
         
@@ -427,6 +540,13 @@ function renderErrorList() {
     });
     
     msgDiv.innerHTML = html;
+
+    // Re-apply current filter settings after re-rendering the list,
+    // but only if filters have already been initialized.
+    if (typeof updateFilteredDisplay === 'function' &&
+        document.querySelectorAll('.rule-filter').length > 0) {
+        updateFilteredDisplay();
+    }
 }
 
 // Initialize filtering
@@ -467,6 +587,9 @@ function initializeFiltering() {
             updateFilteredDisplay();
         }
     });
+
+    // Apply initial filter state (all checked) to current content
+    updateFilteredDisplay();
 }
 
 // Update filtered display
@@ -476,6 +599,36 @@ function updateFilteredDisplay() {
         enabledRules.add(cb.value);
     });
     
+    const msgDiv = document.getElementById('msgContent');
+    const emptyStateId = 'no-errors-filtered';
+    let emptyState = document.getElementById(emptyStateId);
+    
+    // If no rules are enabled, hide all error sections and show an info message
+    if (enabledRules.size === 0) {
+        document.querySelectorAll('.lg-section').forEach(sec => {
+            const hasRuleErrors = sec.querySelector('.rule-error') !== null;
+            if (hasRuleErrors) {
+                sec.style.display = 'none';
+            } else {
+                sec.style.display = '';
+            }
+        });
+        if (!emptyState && msgDiv) {
+            emptyState = document.createElement('div');
+            emptyState.id = emptyStateId;
+            emptyState.className = 'lg-muted';
+            emptyState.style.marginTop = '10px';
+            emptyState.textContent = 'Фільтри вимкнули всі типи помилок. Увімкніть хоча б один тип, щоб побачити список.';
+            msgDiv.appendChild(emptyState);
+        }
+        return;
+    } else {
+        // Some rules enabled: remove empty state message
+        if (emptyState && emptyState.parentNode) {
+            emptyState.parentNode.removeChild(emptyState);
+        }
+    }
+    
     document.querySelectorAll('.rule-error').forEach(errorDiv => {
         let shouldShow = false;
         enabledRules.forEach(rule => {
@@ -484,6 +637,17 @@ function updateFilteredDisplay() {
             }
         });
         errorDiv.style.display = shouldShow ? '' : 'none';
+    });
+
+    // Hide sections that have no visible rule-error for enabled rules
+    document.querySelectorAll('.lg-section').forEach(sec => {
+        const ruleErrors = sec.querySelectorAll('.rule-error');
+        if (ruleErrors.length === 0) {
+            // Not an error container section (e.g. text structure), keep visible
+            return;
+        }
+        const hasVisible = Array.from(ruleErrors).some(div => div.style.display !== 'none');
+        sec.style.display = hasVisible ? '' : 'none';
     });
 }
 
@@ -497,7 +661,11 @@ function deleteSelectedBbox() {
             textBlocks.splice(index, 1);
             selectedBboxIndex = null;
             const categorySelector = document.getElementById('categorySelector');
+            const languageLabel = document.getElementById('languageLabel');
             categorySelector.style.display = 'none';
+            if (languageLabel) {
+                languageLabel.textContent = '';
+            }
             drawCanvas();
             renderErrorList();
         }
@@ -508,6 +676,7 @@ function deleteSelectedBbox() {
 function setupEventListeners() {
     const categorySelector = document.getElementById('categorySelector');
     const categorySelect = document.getElementById('categorySelect');
+    const languageLabel = document.getElementById('languageLabel');
     const analyzeBtn = document.getElementById('analyzeBtn');
     
     // Category change
@@ -533,16 +702,16 @@ function setupEventListeners() {
         
         // Check if Ray Serve is needed (when using relative paths/Live Preview)
         if (USE_RELATIVE_PATHS) {
-            // Test if Ray Serve is available
+            // Test if Ray Serve is available on default HTTP port 8000
             try {
-                const testResponse = await fetch('http://localhost:8001/labelguard/analyze', {
+                const testResponse = await fetch('http://localhost:8000/labelguard/analyze', {
                     method: 'OPTIONS'  // Just check if server responds
                 });
             } catch (e) {
                 const msgDiv = document.getElementById('msgContent');
                 msgDiv.innerHTML = '<div style="color: orange; padding: 20px; font-size: 16px;">' +
                     '⚠️ <strong>Ray Serve is not running</strong><br>' +
-                    'The Analyze button requires Ray Serve to be running on port 8001.<br>' +
+                    'The Analyze button requires Ray Serve to be running on port 8000.<br>' +
                     'For now, you can view and edit bboxes. Start Ray Serve to use Analyze.</div>';
                 return;
             }
@@ -555,13 +724,18 @@ function setupEventListeners() {
         try {
             // Collect current bbox data
             const textBlocks = LABELGUARD_DATA.labelProcessingResult.text_blocks;
-            const blocks = textBlocks.map(block => ({
-                id: block.index,
-                bbox: Array.isArray(block.bbox) ? block.bbox : [block.bbox],
-                category: block.type || '',
-                text: block.text || '',
-                modified: block.modified || false
-            }));
+            const blocks = textBlocks.map(block => {
+                const rawBbox = Array.isArray(block.bbox) ? block.bbox : [block.bbox];
+                // Normalize bbox coordinates to integers (server expects ints for PIL)
+                const intBbox = rawBbox.map(v => Math.round(v));
+                return {
+                    id: block.index,
+                    bbox: intBbox,
+                    category: block.type || '',
+                    // text is not needed for re-analysis payload; server will OCR if needed
+                    modified: !!block.modified
+                };
+            });
             
             // Get image path and metadata
             // The image_path from LABELGUARD_DATA is already the HTTP path (e.g., /artifacts/labelguard/filename.jpg)
@@ -582,19 +756,30 @@ function setupEventListeners() {
                     }
                 }
             }
-            // Note: When using relative paths (Live Preview), Analyze button won't work
-            // because it requires Ray Serve to process the request
+            // Note: When using relative paths (Live Preview), Analyze button still requires Ray Serve.
+            // Here we construct the JSON payload expected by the Python analyze() function.
             
-            const kmat = LABELGUARD_DATA.labelProcessingResult.kmat || 'UNKNOWN';
-            const version = LABELGUARD_DATA.labelProcessingResult.version || 'v1.0';
+            const lp = LABELGUARD_DATA.labelProcessingResult;
+            const originalFilename = lp.original_filename;
+            const kmat = lp.kmat || 'UNKNOWN';
+            const version = lp.version || 'v1.0';
             
-            // Prepare request
+            // Only send modified blocks back to the server.
+            // Empty list = initial detection; non-empty = corrections for these bboxes.
+            const requestBlocks = blocks.filter(b => b.modified);
+            
             const requestData = {
                 image_path: imagePath,
-                blocks: blocks,
+                blocks: requestBlocks,
                 kmat: kmat,
                 version: version
             };
+            
+            // Derive explicit etalon_path so backend can load the *_etalon.json file
+            if (originalFilename) {
+                // Use raw original_filename for filesystem path; no URL encoding here
+                requestData.etalon_path = `/artifacts/labelguard/${originalFilename}_etalon.json`;
+            }
             
             console.log('Sending analyze request:', requestData);
             console.log('API Server URL:', API_SERVER_URL);
@@ -602,7 +787,7 @@ function setupEventListeners() {
             // Send POST request to /labelguard/analyze
             // Note: This requires Ray Serve to be running (won't work with relative paths)
             const analyzeUrl = USE_RELATIVE_PATHS 
-                ? 'http://localhost:8001/labelguard/analyze'  // Force Ray Serve URL for Analyze
+                ? 'http://localhost:8000/labelguard/analyze'  // Ray Serve default HTTP port
                 : `${API_SERVER_URL}/labelguard/analyze`;
             const response = await fetch(analyzeUrl, {
                 method: 'POST',
@@ -673,14 +858,14 @@ function setupEventListeners() {
         }
     });
     
-    // Mouse down - handle bbox editing or pan (if clicking outside bboxes)
+    // Mouse down - handle bbox editing or pan
     canvas.addEventListener('mousedown', function(e) {
         const x = (e.offsetX - offsetX) / scale;
         const y = (e.offsetY - offsetY) / scale;
         const textBlocks = LABELGUARD_DATA.labelProcessingResult.text_blocks;
         
-        // Check if clicking on resize handle
-        if (selectedBboxIndex !== null) {
+        // Check if clicking on resize handle (only when in edit mode)
+        if (editMode && selectedBboxIndex !== null) {
             const selectedBlock = textBlocks.find(b => b.index === selectedBboxIndex);
             if (selectedBlock) {
                 const [x1, y1, x2, y2] = selectedBlock.bbox;
@@ -712,9 +897,8 @@ function setupEventListeners() {
         if (clickedBlock) {
             if (e.shiftKey) {
                 // Create mode - don't select
-            } else {
-                // Select and prepare to move
-                selectedBboxIndex = clickedBlock.index;
+            } else if (editMode && selectedBboxIndex === clickedBlock.index) {
+                // In edit mode for this block: start moving it
                 isResizing = true;
                 resizeHandle = 'move';
                 startX = e.clientX;
@@ -723,18 +907,14 @@ function setupEventListeners() {
                 createStartX = x - x1; // Offset from bbox corner
                 createStartY = y - y1;
                 canvas.style.cursor = 'move';
-                
-                // Show category selector
-                categorySelector.style.display = 'block';
-                // Set category dropdown to current block's category code (if it exists in CATEGORIES)
-                const blockCategoryCode = clickedBlock.type || '';
-                if (blockCategoryCode && CATEGORIES[blockCategoryCode]) {
-                    categorySelect.value = blockCategoryCode;
-                } else {
-                    categorySelect.value = '';  // Empty if no category or unknown category
-                }
-                
                 e.preventDefault();
+            } else {
+                // Not in edit mode: drag on a block pans the image
+                isDragging = true;
+                startX = e.clientX - offsetX;
+                startY = e.clientY - offsetY;
+                canvas.style.cursor = 'grabbing';
+                // Selection will be handled by click/double-click
             }
         } else if (e.shiftKey) {
             // Start creating new bbox
@@ -750,17 +930,22 @@ function setupEventListeners() {
             startY = e.clientY - offsetY;
             canvas.style.cursor = 'grabbing';
             
-            // Deselect
+            // Deselect and exit edit mode
             selectedBboxIndex = null;
+            editMode = false;
+            const languageLabel = document.getElementById('languageLabel');
             categorySelector.style.display = 'none';
+            if (languageLabel) {
+                languageLabel.textContent = '';
+            }
             drawCanvas();
         }
     });
     
     // Mouse move - handle resize/move/create or pan
     canvas.addEventListener('mousemove', function(e) {
-        // Handle panning (when dragging outside bboxes)
-        if (isDragging && selectedBboxIndex === null && !isResizing && !isCreatingBbox) {
+        // Handle panning (when dragging and not resizing/creating)
+        if (isDragging && !isResizing && !isCreatingBbox) {
             offsetX = e.clientX - startX;
             offsetY = e.clientY - startY;
             drawCanvas();
@@ -773,7 +958,7 @@ function setupEventListeners() {
         const y = (e.offsetY - offsetY) / scale;
         const textBlocks = LABELGUARD_DATA.labelProcessingResult.text_blocks;
         
-        if (isResizing && selectedBboxIndex !== null) {
+        if (isResizing && editMode && selectedBboxIndex !== null) {
             // Resize or move existing bbox
             const block = textBlocks.find(b => b.index === selectedBboxIndex);
             if (block) {
@@ -833,7 +1018,7 @@ function setupEventListeners() {
             let foundHover = false;
             hoveredBboxIndex = null;
             
-            if (selectedBboxIndex !== null) {
+            if (editMode && selectedBboxIndex !== null) {
                 const selectedBlock = textBlocks.find(b => b.index === selectedBboxIndex);
                 if (selectedBlock) {
                     const [x1, y1, x2, y2] = selectedBlock.bbox;
@@ -850,7 +1035,13 @@ function setupEventListeners() {
                     const [x1, y1, x2, y2] = block.bbox;
                     if (x >= x1 && x <= x2 && y >= y1 && y <= y2) {
                         hoveredBboxIndex = block.index;
-                        canvas.style.cursor = selectedBboxIndex === block.index ? 'move' : 'pointer';
+                        // When not in edit mode, dragging a block pans the image,
+                        // so indicate that with a grab cursor. In edit mode, show move.
+                        if (editMode && selectedBboxIndex === block.index) {
+                            canvas.style.cursor = 'move';
+                        } else {
+                            canvas.style.cursor = 'grab';
+                        }
                         foundHover = true;
                         break;
                     }
@@ -912,6 +1103,11 @@ function setupEventListeners() {
             isResizing = false;
             resizeHandle = null;
             canvas.style.cursor = 'default';
+            // When finishing a resize/move, automatically exit edit mode
+            if (editMode) {
+                editMode = false;
+                drawCanvas();
+            }
         }
         
         // Stop panning
@@ -925,6 +1121,7 @@ function setupEventListeners() {
         isDragging = false;
         isCreatingBbox = false;
         isResizing = false;
+        editMode = false;
         hoveredBboxIndex = null;
         canvas.style.cursor = 'default';
         drawCanvas();
@@ -954,11 +1151,82 @@ function setupEventListeners() {
         }
         
         if (clickedBlock) {
+            // Select block (without entering edit mode) and show category selector
+            selectedBboxIndex = clickedBlock.index;
+            categorySelector.style.display = 'block';
+            const blockCategoryCode = clickedBlock.type || '';
+            if (blockCategoryCode && CATEGORIES[blockCategoryCode]) {
+                categorySelect.value = blockCategoryCode;
+            } else {
+                categorySelect.value = '';
+            }
+            drawCanvas();
             // Show block details
             renderBlockDetails(clickedBlock);
         } else {
             // Show error list
             renderErrorList();
+        }
+    });
+
+    // Double-click toggles edit mode for the block under cursor
+    canvas.addEventListener('dblclick', function(e) {
+        if (!LABELGUARD_DATA || !LABELGUARD_DATA.labelProcessingResult) return;
+        const x = (e.offsetX - offsetX) / scale;
+        const y = (e.offsetY - offsetY) / scale;
+        const textBlocks = LABELGUARD_DATA.labelProcessingResult.text_blocks;
+        let clickedBlock = null;
+        
+        for (const block of textBlocks) {
+            const [x1, y1, x2, y2] = block.bbox;
+            if (x >= x1 && x <= x2 && y >= y1 && y <= y2) {
+                clickedBlock = block;
+                break;
+            }
+        }
+        
+        if (clickedBlock) {
+            // Enter or switch edit mode to this block
+            if (!editMode || selectedBboxIndex !== clickedBlock.index) {
+                selectedBboxIndex = clickedBlock.index;
+                editMode = true;
+                // Show and sync category selector
+                categorySelector.style.display = 'block';
+                const blockCategoryCode = clickedBlock.type || '';
+                if (blockCategoryCode && CATEGORIES[blockCategoryCode]) {
+                    categorySelect.value = blockCategoryCode;
+                } else {
+                    categorySelect.value = '';
+                }
+            } else {
+                // Already editing this block -> exit edit mode
+                editMode = false;
+                isResizing = false;
+                resizeHandle = null;
+            }
+            drawCanvas();
+        } else {
+            // Double-click on empty area: exit edit mode and clear selection
+            editMode = false;
+            selectedBboxIndex = null;
+            isResizing = false;
+            resizeHandle = null;
+            categorySelector.style.display = 'none';
+            drawCanvas();
+        }
+    });
+
+    // Toggle collapsible sections in details panel
+    const msgDiv = document.getElementById('msgContent');
+    msgDiv.addEventListener('click', function(e) {
+        const header = e.target.closest('.lg-collapsible-header');
+        if (!header) return;
+        const container = header.parentElement;
+        if (!container.classList.contains('lg-collapsible')) return;
+        container.classList.toggle('lg-collapsible--open');
+        const icon = header.querySelector('.lg-collapsible-icon');
+        if (icon) {
+            icon.textContent = container.classList.contains('lg-collapsible--open') ? '▾' : '▸';
         }
     });
 }
@@ -1008,42 +1276,101 @@ function getCursorForHandle(handle) {
 function renderBlockDetails(textBlock) {
     if (!LABELGUARD_DATA || !LABELGUARD_DATA.labelProcessingResult) return;
     const msgDiv = document.getElementById('msgContent');
+    const filterPanel = document.getElementById('filterPanel');
+    const languageLabel = document.getElementById('languageLabel');
+    
+    // In block details mode, hide the filter panel
+    if (filterPanel) {
+        filterPanel.style.display = 'none';
+    }
     const ruleResults = LABELGUARD_DATA.labelProcessingResult.rule_check_results;
     const blockResults = ruleResults.filter(r => 
         r.text_block && r.text_block.index === textBlock.index
     );
     
-    let html = `<div style="background-color: #f0f0f0; padding: 8px; margin-bottom: 10px; border-radius: 4px; font-weight: bold;">`;
-    const languages = Array.isArray(textBlock.languages) ? textBlock.languages : (textBlock.languages ? [textBlock.languages] : []);
-    // Show category name if available, otherwise show code
-    let categoryDisplay = textBlock.type || 'N/A';
-    if (textBlock.type && CATEGORIES[textBlock.type] && CATEGORIES[textBlock.type].name) {
-        categoryDisplay = `${textBlock.type} - ${CATEGORIES[textBlock.type].name}`;
-    }
-    html += `📋 Block #${textBlock.index} | Type: ${categoryDisplay} | Lang: ${languages.join(', ') || 'N/A'}`;
-    html += `</div>`;
+    const languages = Array.isArray(textBlock.languages)
+        ? textBlock.languages
+        : (textBlock.languages ? [textBlock.languages] : []);
     
-    // Display extracted text
-    html += `<div style="margin-bottom:10px;"><strong>Extracted Text:</strong> "${textBlock.text ? textBlock.text.substring(0, 100) + (textBlock.text.length > 100 ? '...' : '') : 'N/A'}"</div>`;
-    
-    // Display etalon text if available
-    if (textBlock.etalon_text) {
-        html += `<div style="margin-bottom:10px; color: #666;"><strong>Etalon Text:</strong> "${textBlock.etalon_text.substring(0, 100)}${textBlock.etalon_text.length > 100 ? '...' : ''}"</div>`;
-    }
-    
-    // Display sentences with categories if available
-    if (textBlock.sentences && textBlock.sentences.length > 0) {
-        html += `<div style="margin-bottom:10px;"><strong>Sentences:</strong><ul style="margin: 5px 0; padding-left: 20px;">`;
-        textBlock.sentences.forEach(sentence => {
-            html += `<li><strong>[${sentence.category || 'N/A'}]</strong> ${sentence.text.substring(0, 80)}${sentence.text.length > 80 ? '...' : ''}</li>`;
-        });
-        html += `</ul></div>`;
-    }
-    
-    blockResults.forEach(result => {
-        if (result.html_details) {
-            html += `<div class="rule-error" data-rule-${result.rule_name}>${result.html_details}</div>`;
+    // Update language marker next to the category dropdown: "(lang) #index"
+    if (languageLabel) {
+        if (languages.length) {
+            languageLabel.textContent = `(${languages.join(', ')})  #${textBlock.index}`;
+        } else {
+            languageLabel.textContent = `#${textBlock.index}`;
         }
+    }
+    
+    // Details content (no separate block header – category, lang and index are in the selector row)
+    let html = '';
+    
+    // Full extracted text, no caption
+    if (textBlock.text) {
+        html += `<div class="lg-section">${textBlock.text}</div>`;
+    }
+    
+    // Full etalon text if available, wrapped in a collapsible section (collapsed by default)
+    if (textBlock.etalon_text) {
+        html += `
+        <div class="lg-section lg-collapsible" data-collapsible="etalon">
+          <div class="lg-collapsible-header">
+            <span class="lg-collapsible-icon">▸</span>
+            <span class="lg-collapsible-title">Еталон</span>
+          </div>
+          <div class="lg-collapsible-body">${textBlock.etalon_text}</div>
+        </div>`;
+    }
+    
+    // Text structure: group sentences by category and join their texts, in a collapsible section
+    if (textBlock.sentences && textBlock.sentences.length > 0) {
+        const grouped = [];
+        const indexByCategory = {};
+        
+        textBlock.sentences.forEach(sentence => {
+            const cat = sentence.category || 'N/A';
+            if (indexByCategory[cat] === undefined) {
+                indexByCategory[cat] = grouped.length;
+                grouped.push({ category: cat, text: sentence.text || '' });
+            } else {
+                const entry = grouped[indexByCategory[cat]];
+                // Join with a space to keep text readable
+                entry.text = entry.text ? `${entry.text} ${sentence.text || ''}` : (sentence.text || '');
+            }
+        });
+        
+        html += `
+        <div class="lg-section lg-collapsible" data-collapsible="structure">
+          <div class="lg-collapsible-header">
+            <span class="lg-collapsible-icon">▸</span>
+            <span class="lg-collapsible-title">Структура текста</span>
+          </div>
+          <div class="lg-collapsible-body">
+            <ul class="lg-list">`;
+        grouped.forEach(entry => {
+            const catInfo = SENTENCE_CATEGORIES[entry.category];
+            const catLabel = catInfo && catInfo.name ? catInfo.name : entry.category;
+            html += `<li><strong>[${catLabel}]</strong> ${entry.text}</li>`;
+        });
+        html += `</ul>
+          </div>
+        </div>`;
+    }
+    
+    // Rule-level details for this block
+    blockResults.forEach(result => {
+        if (!result.html_details) {
+            return;
+        }
+        let detailsHtml = result.html_details;
+        // In block details view, keep etalon rule but strip the long etalon text chunk
+        if (result.rule_name === 'etalon') {
+            const marker = 'Еталон:';
+            const idx = detailsHtml.indexOf(marker);
+            if (idx !== -1) {
+                detailsHtml = detailsHtml.slice(0, idx).trim();
+            }
+        }
+        html += `<div class="rule-error lg-rule-error" data-rule-${result.rule_name}>${detailsHtml}</div>`;
     });
     
     msgDiv.innerHTML = html;

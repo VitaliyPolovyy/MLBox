@@ -29,51 +29,115 @@ def predict_and_save(input_dir, output_dir, yolo_path, annotation_folder):
     annotation_folder = Path(annotation_folder)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    iou_scores = []
+    iou_data = []  # Store (img_path, mask_info_list) where mask_info_list contains (iou, confidence, area) for each mask
+
+    # Colors in BGR format
+    pred_color = (0, 0, 255)  # Red for predicted masks
+    gt_color = (0, 255, 255)  # Yellow for ground truth
 
     for img_path in input_dir.glob("*.jpg"):  # Assuming images are in .jpg format
         img = np.array(Image.open(img_path))
         results = model.predict(img, verbose=False)
         results = results[0] if results else None
 
-        mask = np.zeros_like(img, dtype=np.uint8)
-        true_mask = np.zeros_like(img, dtype=np.uint8)
+        # Convert RGB to BGR for OpenCV drawing
+        img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        result_img = img_bgr.copy()
+        mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
+        true_mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
 
-        # Load the true mask
+        # Load the true mask - accumulate ALL polygons
         annotation_path = annotation_folder / (img_path.stem + '.txt')
+        gt_polygons = []
         
-        with open(annotation_path, 'r') as f:
-            for line in f:
-                coords = list(map(float, line.strip().split()[1:]))
-                points = np.array(coords).reshape(-1, 2)
-                points[:, 0] *= img.shape[1]  # Scale x coordinates
-                points[:, 1] *= img.shape[0]  # Scale y coordinates
-                points = points.astype(np.int32)
-                #cv2.drawContours(img, [points], -1, (0, 255, 0), 2)  # Draw the contour on the true mask
+        if annotation_path.exists():
+            with open(annotation_path, 'r') as f:
+                for line in f:
+                    parts = line.strip().split()
+                    if len(parts) < 2:
+                        continue
+                    coords = list(map(float, parts[1:]))
+                    points = np.array(coords).reshape(-1, 2)
+                    points[:, 0] *= img.shape[1]  # Scale x coordinates
+                    points[:, 1] *= img.shape[0]  # Scale y coordinates
+                    points = points.astype(np.int32)
+                    gt_polygons.append(points)
+        
+        # Draw all ground truth polygons in yellow (just contours)
+        for points in gt_polygons:
+            cv2.drawContours(result_img, [points], -1, gt_color, 2)
+            cv2.fillPoly(true_mask, [points], 255)
 
-        cv2.fillPoly(true_mask, [points], (255, 255, 255))  # Fill the contour on the mask
-
-        if results and results.masks.xy:
-            points = results.masks.xy[0].astype(np.int32)
-            cv2.drawContours(img, [points], -1, (255, 0, 0), 2)  # Draw the contour with white color and fill it
-            cv2.fillPoly(mask, [points], (255, 255, 255))  # Fill the contour on the mask
+        # Process all predicted masks
+        mask_info_list = []  # Store (iou, confidence, area) for each predicted mask
+        
+        if results and results.masks is not None and len(results.masks.xy) > 0:
+            # Get confidence scores
+            confidences = results.boxes.conf.cpu().numpy() if results.boxes is not None else [0.5] * len(results.masks.xy)
+            
+            # Draw all predicted masks in red (just contours) and calculate IoU for each
+            for idx, (mask_xy, conf) in enumerate(zip(results.masks.xy, confidences)):
+                points = mask_xy.astype(np.int32)
+                
+                # Draw contour only (no fill)
+                cv2.drawContours(result_img, [points], -1, pred_color, 2)
+                
+                # Create mask for IoU calculation
+                temp_mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
+                cv2.fillPoly(temp_mask, [points], 255)
+                
+                # Calculate area for this mask
+                mask_area = temp_mask.sum()
+                
+                # Calculate IoU for this mask
+                iou = calculate_iou(temp_mask, true_mask)
+                mask_info_list.append((iou, float(conf), mask_area))
         else:
-            print("nothing is predicted!")
-
-        iou = calculate_iou(mask[:, :, 0], true_mask[:, :, 0])
-        iou_scores.append(iou)
+            print(f"nothing is predicted for {img_path.name}!")
         
+        # Store all mask information
+        iou_data.append((img_path, mask_info_list))
+        
+        # Convert BGR back to RGB for saving with PIL
+        result_img_rgb = cv2.cvtColor(result_img, cv2.COLOR_BGR2RGB)
         output_path = output_dir / (img_path.stem + "_mask.jpg")
-        Image.fromarray(img).save(output_path)
+        Image.fromarray(result_img_rgb).save(output_path)
 
-    # Save IoU scores to a text file
+    # Save IoU scores to a text file with confidence
     iou_file_path = output_dir / "IoU.txt"
     with open(iou_file_path, 'w') as f:
-        sorted_iou_scores = sorted(zip(input_dir.glob("*.jpg"), iou_scores), key=lambda x: x[1], reverse=True)
-        for img_path, iou in sorted_iou_scores:
-            f.write(f"{img_path.name}: {iou:.4f}\n")
-        avg_iou = sum(iou_scores) / len(iou_scores) if iou_scores else 0.0
-        f.write(f"\nAverage IoU: {avg_iou:.4f}\n")
+        # Sort by best IoU per image (highest IoU among all masks for that image)
+        sorted_iou_data = sorted(
+            iou_data, 
+            key=lambda x: max((mask_info[0] for mask_info in x[1]), default=0.0), 
+            reverse=True
+        )
+        
+        all_ious = []
+        all_confs = []
+        
+        for img_path, mask_info_list in sorted_iou_data:
+            if not mask_info_list:
+                # No predictions
+                f.write(f"{img_path.name}: no predictions\n")
+            else:
+                # Sort masks by IoU (best first)
+                mask_info_list_sorted = sorted(mask_info_list, key=lambda x: x[0], reverse=True)
+                
+                # Write all masks for this image
+                mask_strings = []
+                for mask_idx, (iou, conf, area) in enumerate(mask_info_list_sorted):
+                    mask_strings.append(f"mask{mask_idx+1}: IoU={iou:.4f} conf={conf:.4f}")
+                    all_ious.append(iou)
+                    all_confs.append(conf)
+                
+                f.write(f"{img_path.name}: {' | '.join(mask_strings)}\n")
+        
+        if all_ious:
+            avg_iou = sum(all_ious) / len(all_ious)
+            avg_conf = sum(all_confs) / len(all_confs)
+            f.write(f"\nAverage IoU (all masks): {avg_iou:.4f}\n")
+            f.write(f"Average Confidence (all masks): {avg_conf:.4f}\n")
 
 
 if __name__ == "__main__":
@@ -85,6 +149,7 @@ if __name__ == "__main__":
     
     input_folder = ROOT_DIR / "assets" / "peanuts" / "datasets" / "separated" / "for-training"
     
+    """
     model.train(
         data=input_folder / "dataset.yaml",
         project=CURRENT_DIR,
@@ -115,6 +180,7 @@ if __name__ == "__main__":
         seed=0,                # default is None
         deterministic=True     # default is False
     )
+    """
     
     # Example usage
 
