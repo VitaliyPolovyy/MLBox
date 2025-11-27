@@ -538,8 +538,12 @@ def generate_interactive_error_viewer(
 <meta charset="UTF-8">
 <style>
   body {{ display: flex; height: 100vh; margin: 0; overflow: hidden; }}
-  #imagePanel {{ flex: 1; position: relative; overflow: hidden; border-right: 1px solid #ccc; cursor: grab; padding: 25px; box-sizing: border-box; }}
-  #messagePanel {{ flex: 1; padding: 10px; overflow-y: auto; }}
+  #imagePanel {{ flex: 0 0 55%; position: relative; overflow: hidden; border-right: 1px solid #ccc; cursor: grab; padding: 25px; box-sizing: border-box; }}
+  #messagePanel {{ flex: 0 0 45%; padding: 10px; overflow-y: auto; }}
+  /* Draggable vertical divider between panels */
+  #divider {{ width: 18px; background-color: #ddd; cursor: col-resize; height: 100vh; }}
+  #divider:hover {{ background-color: #ccc; }}
+  body.resizing {{ cursor: col-resize; user-select: none; }}
   canvas {{ display: block; }}
   #debugInfo {{
     position: absolute;
@@ -586,6 +590,7 @@ def generate_interactive_error_viewer(
   <div id="debugInfo">Hover over blocks to see info</div>
   <canvas id="labelCanvas"></canvas>
 </div>
+<div id="divider"></div>
 <div id="messagePanel">
   <div id="filterPanel">
     {''.join([f'<label><input type="checkbox" class="rule-filter" value="{rule.value}" checked style="transform: scale(1.2); vertical-align: middle; margin-right: 6px;"> {name} <span class="rule-count {"has-errors" if rule_counts.get(rule, 0) > 0 else "no-errors"}">({rule_counts.get(rule, 0)})</span></label>' for rule, name in RULE_NAMES_UK.items()])}
@@ -618,6 +623,61 @@ let scale = 1;
 let offsetX = 0, offsetY = 0;
 let isDragging = false, startX = 0, startY = 0;
 
+// Setup resizable split between image and message panels
+function setupSplitPane() {{
+  const imagePanel = document.getElementById('imagePanel');
+  const messagePanel = document.getElementById('messagePanel');
+  const divider = document.getElementById('divider');
+
+  if (!imagePanel || !messagePanel || !divider) {{
+    console.warn('SplitPane: required elements not found');
+    return;
+  }}
+
+  let isResizing = false;
+
+  divider.addEventListener('mousedown', (e) => {{
+    e.preventDefault();
+    isResizing = true;
+    document.body.classList.add('resizing');
+    console.log('SplitPane: start resizing');
+  }});
+
+  window.addEventListener('mousemove', (e) => {{
+    if (!isResizing) return;
+
+    const totalWidth = window.innerWidth;
+    const minPercent = 20;
+    const maxPercent = 80;
+
+    let leftPercent = (e.clientX / totalWidth) * 100;
+    if (leftPercent < minPercent) leftPercent = minPercent;
+    if (leftPercent > maxPercent) leftPercent = maxPercent;
+
+    imagePanel.style.flex = `0 0 ${leftPercent}%`;
+    messagePanel.style.flex = `0 0 ${100 - leftPercent}%`;
+
+    // Recompute canvas scale and offset to keep image centered in resized panel
+    if (img && canvas) {{
+      const panelWidth = imagePanel.clientWidth;
+      const panelHeight = imagePanel.clientHeight;
+      const scaleX = panelWidth / img.width;
+      const scaleY = panelHeight / img.height;
+      scale = Math.min(scaleX, scaleY, 1);
+      offsetX = (panelWidth - img.width * scale) / 2;
+      offsetY = (panelHeight - img.height * scale) / 2;
+      drawCanvas();
+    }}
+  }});
+
+  window.addEventListener('mouseup', () => {{
+    if (!isResizing) return;
+    isResizing = false;
+    document.body.classList.remove('resizing');
+    console.log('SplitPane: stop resizing');
+  }});
+}}
+
 img.onload = () => {{
   canvas.width = img.width;
   canvas.height = img.height;
@@ -637,6 +697,8 @@ img.onload = () => {{
   msgDiv.innerHTML = summary;
   // Initialize filtering after summary is loaded
   setTimeout(initializeFiltering, 100);
+  // Initialize resizable split pane
+  setupSplitPane();
 }};
 
 function drawCanvas() {{

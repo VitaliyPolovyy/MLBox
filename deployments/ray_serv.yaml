@@ -13,6 +13,7 @@ applications:
     runtime_env:
       env_vars:
         RAY_RUNTIME_ENV_MODE: "host"
+        MPLCONFIGDIR: "/tmp/matplotlib"
   
   - name: LabelGuard
     route_prefix: "/labelguard"
@@ -24,3 +25,4 @@ applications:
     runtime_env:
       env_vars:
         RAY_RUNTIME_ENV_MODE: "host"
+        MPLCONFIGDIR: "/tmp/matplotlib"

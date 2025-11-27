@@ -1,0 +1,20 @@
+You are given a list of multilanguage sentences from a product label. Classify each sentence into these categories: {{ category_codes|join(', ') }}.
+
+Categories:
+{{ categories_desc }}
+
+Instructions:
+1. For each sentence, determine which category it belongs to.
+2. Translate non-English text to understand the meaning before classifying.
+3. Return a **valid JSON object only** with category codes as keys and lists of sentence indices as values.
+4. Do not include any extra text, explanations, or comments.
+5. If a category has no sentences, return an empty list for that key.
+6. The JSON must be strictly parseable by `json.loads()`.
+7. DO NOT OUTPUT ANYTHING OTHER THAN VALID JSON.
+
+Sentences:
+{{ sentences_text }}
+
+Return format example: {"A": [0, 1], "B": [2], "D": [3], "E": [4, 5], "Z": []}
+
+

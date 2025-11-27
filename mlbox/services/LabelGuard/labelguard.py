@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 from collections import deque
@@ -18,8 +17,15 @@ import base64
 from io import BytesIO
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables for this project.
+# Prefer a project-specific .env.mlbox file; fall back to default .env search.
+from mlbox.settings import ROOT_DIR, LOG_LEVEL  # ROOT_DIR is project root
+
+env_mlbox = ROOT_DIR / ".env.mlbox"
+if env_mlbox.exists():
+    load_dotenv(dotenv_path=env_mlbox)
+else:
+    load_dotenv()
 
 #print(f"DEBUG: GOOGLE_APPLICATION_CREDENTIALS = {os.getenv('GOOGLE_APPLICATION_CREDENTIALS')}")
 
@@ -37,7 +43,6 @@ from mlbox.services.LabelGuard.datatypes import (
     CategoryNumberResult,
     NumbersCheckResult
 )
-from mlbox.settings import ROOT_DIR, LOG_LEVEL
 
 
 from pydantic import BaseModel
@@ -78,21 +83,49 @@ def _get_reverse_mapping(etalon_to_bcp47: dict) -> dict:
     """Generate reverse mapping (bcp47_to_etalon) from etalon_to_bcp47"""
     return {v: k for k, v in etalon_to_bcp47.items()}
 
-# Cache the mapping at module level
-# _load_language_mapping() returns etalon_to_bcp47 from JSON
-LANGUAGE_MAPPING_ETALON_TO_BCP47 = _load_language_mapping()
-# Reverse mapping: bcp47_to_etalon
-LANGUAGE_MAPPING_BCP47_TO_ETALON = _get_reverse_mapping(LANGUAGE_MAPPING_ETALON_TO_BCP47)
+
+# JSON-backed reference data (initialized by InitReferences)
+LANGUAGE_MAPPING_ETALON_TO_BCP47: dict = {}
+LANGUAGE_MAPPING_BCP47_TO_ETALON: dict = {}
+TEXT_BLOCK_CATEGORIES: dict = {}
+SENTENCE_CATEGORIES: dict = {}
 
 
-# Text block classification categories
-def load_text_block_categories():
-    """Load text block categories from JSON file"""
-    categories_file = ROOT_DIR / "assets" / "labelguard" / "json" / "data-categories.json"
-    with open(categories_file, 'r', encoding='utf-8') as f:
-        return json.load(f)
+def InitReferences() -> None:
+    """Load all JSON-based reference data into module-level globals."""
+    global LANGUAGE_MAPPING_ETALON_TO_BCP47, LANGUAGE_MAPPING_BCP47_TO_ETALON
+    global TEXT_BLOCK_CATEGORIES, SENTENCE_CATEGORIES
 
-TEXT_BLOCK_CATEGORIES = load_text_block_categories()
+    # Load language mapping for etalon <-> BCP-47
+    try:
+        LANGUAGE_MAPPING_ETALON_TO_BCP47 = _load_language_mapping()
+        LANGUAGE_MAPPING_BCP47_TO_ETALON = _get_reverse_mapping(LANGUAGE_MAPPING_ETALON_TO_BCP47)
+    except Exception as e:
+        app_logger.warning(SERVICE_NAME, f"Failed to initialize language mappings: {e}. Using empty mappings.")
+        LANGUAGE_MAPPING_ETALON_TO_BCP47 = {}
+        LANGUAGE_MAPPING_BCP47_TO_ETALON = {}
+
+    # Load text block categories (A, B, C, ...)
+    try:
+        categories_file = ROOT_DIR / "assets" / "labelguard" / "json" / "data-categories.json"
+        with open(categories_file, "r", encoding="utf-8") as f:
+            TEXT_BLOCK_CATEGORIES = json.load(f)
+    except Exception as e:
+        app_logger.warning(SERVICE_NAME, f"Failed to load text block categories: {e}. Using empty mapping.")
+        TEXT_BLOCK_CATEGORIES = {}
+
+    # Load sentence-level categories for ingredients classification (A, B, C, D, E, Z)
+    try:
+        sentence_categories_file = ROOT_DIR / "assets" / "labelguard" / "json" / "ingr-sentence-categories.json"
+        with open(sentence_categories_file, "r", encoding="utf-8") as f:
+            SENTENCE_CATEGORIES = json.load(f)
+    except Exception as e:
+        app_logger.warning(SERVICE_NAME, f"Failed to load sentence categories: {e}. Using empty mapping.")
+        SENTENCE_CATEGORIES = {}
+
+
+# Initialize references at import time
+InitReferences()
 
 def find_etalon_text(block_type : str, language : str, etalon_text_blocks : List[dict]) -> str:
     """
@@ -320,14 +353,28 @@ def rule_check_text_matches_etalon(label_processing_result: LabelProcessingResul
             status_emoji = "✅" if passed else "❌"
             etalon_highlighted = highlight_matches_by_words_html(etalon, lcs_results, use_start_a=True) if etalon else ''
             
-            html_parts.append(f"<div style='margin-top:1px;'><strong>{status_emoji} Перевірка відповідності тексту ({score:.0f}/100):</strong></div>")
+            html_parts.append(
+                f"<div style='margin-top:1px;'>{status_emoji} Перевірка відповідності тексту ({score:.0f}/100):</div>"
+            )
             
-            if total_words > 0:
-                if error_words and len(error_words) > 0:
-                    missing_words_text = ', '.join([word.text for word in error_words])
-                    html_parts.append(f"<div style='font-size:0.9em; color:#666;'><strong>відсутні слова:</strong> {missing_words_text}</div>")
+            if total_words > 0 and error_words:
+                missing_words_text = ', '.join([word.text for word in error_words])
+                html_parts.append(
+                    "<div style='font-size:0.9em; color:#666;'>"
+                    f"<strong>відсутні слова:</strong> {missing_words_text}"
+                    "</div>"
+                )
             
-            html_parts.append(f"<div style='margin-top:10px; font-size:12px;'><strong>Еталон:</strong><br>{etalon_highlighted}</div>")
+            # Collapsible etalon section (expanded on click in UI)
+            html_parts.append(
+                "<div class='lg-section lg-collapsible' data-collapsible='etalon-summary'>"
+                "<div class='lg-collapsible-header'>"
+                "<span class='lg-collapsible-icon'>▸</span>"
+                "<span class='lg-collapsible-title'>Еталон:</span>"
+                "</div>"
+                f"<div class='lg-collapsible-body' style='margin-top:6px; font-size:12px;'>{etalon_highlighted}</div>"
+                "</div>"
+            )
             
             result.html_details = ''.join(html_parts)
         
@@ -418,7 +465,7 @@ def rule_check_allergens(label_processing_result: LabelProcessingResult) -> List
         html_parts.append("<hr style='margin: 4px 0; border: 0; border-top: 1px solid #ccc;'>")
         status_emoji = "✅" if passed else "❌"
         
-        html_parts.append(f"<div style='margin-top:1px;'><strong>{status_emoji} Алергени</strong></div>")
+        html_parts.append(f"<div style='margin-top:1px;'>{status_emoji} Алергени</div>")
         html_parts.append(f"<div>{', '.join(allergen_names) if allergen_names else 'немає'}</div>")
         
         if not passed:
@@ -495,7 +542,7 @@ def extract_numbers_from_text(text: str) -> List[str]:
 
 def rule_check_numbers(label_processing_result: LabelProcessingResult) -> List[NumbersCheckResult]:
     """
-    Validate numbers in INGRIDIENTS and STORAGE_CONDITIONS sentences.
+    Validate numbers in ingredient-related sentences.
     
     Logic:
     1. Filter text blocks with type='ingredients'
@@ -522,8 +569,12 @@ def rule_check_numbers(label_processing_result: LabelProcessingResult) -> List[N
         return errors
     
     # Step 2: Extract numbers by category from all blocks (parse only once!)
-    categories = ['INGRIDIENTS', 'STORAGE_CONDITIONS', 'PRODUCT_NAME']
-    block_numbers = {}  # {block_id: {category: [numbers]}}
+    # We track three logical groups using sentence category codes:
+    # - 'D' (INGRIDIENTS, main ingredient list)
+    # - 'C' (STORAGE_CONDITIONS, storage text)
+    # - 'A' (PRODUCT_NAME, numbers in product name, merged into INGREDIENTS bucket)
+    categories = ['D', 'C', 'A']
+    block_numbers = {}  # {block_id: {category_code: [numbers]}}
     
     reference_sets = {category: [] for category in categories}
 
@@ -534,8 +585,9 @@ def rule_check_numbers(label_processing_result: LabelProcessingResult) -> List[N
         for sentence in block.sentences:
             if sentence.category in categories:
                 extracted = extract_numbers_from_text(sentence.text)
-                if sentence.category == "PRODUCT_NAME":
-                    block_numbers[block_id]["INGRIDIENTS"].extend(extracted)
+                if sentence.category == 'A':
+                    # Numbers in PRODUCT_NAME belong to the overall ingredients bucket ('D')
+                    block_numbers[block_id]['D'].extend(extracted)
                 else:
                     block_numbers[block_id][sentence.category].extend(extracted)
         
@@ -581,7 +633,7 @@ def rule_check_numbers(label_processing_result: LabelProcessingResult) -> List[N
         html_parts = []
         html_parts.append("<hr style='margin: 4px 0; border: 0; border-top: 1px solid #ccc;'>")
         status_emoji = "✅" if passed else "❌"
-        html_parts.append(f"<div style='margin-top:1px;'><strong>{status_emoji} Числа:</strong></div>")
+        html_parts.append(f"<div style='margin-top:1px;'>{status_emoji} Числа:</div>")
         
         # Collect all numbers across categories
         all_actual = []
@@ -667,194 +719,6 @@ def get_word_bounding_boxes(word: OCRWord) -> List[tuple]:
         return [word.bbox]
     else:
         return word.bbox
-
-def process_labels(labels: List[LabelInput]) -> List[LabelProcessingResult]:
-    """
-    Process multiple labels through the complete pipeline according to architecture:
-    1. Layout detection
-    2. OCR processing per layout block
-    3. Text analysis and classification
-    4. HTML report generation
-    
-    Args:
-        labels: List of LabelInput objects containing kmat, version, and image
-        
-    Returns:
-        List of LabelResult objects with processed text blocks
-    """
-    # Initialize processors
-    layout_detector = LayoutDetector()
-    ocr_processor = VisionOCRProcessor()
-    
-    label_processing_results: List[LabelProcessingResult] = []
-    
-    for label in labels:
-        app_logger.info(SERVICE_NAME, f"Processing label: {label.kmat} v{label.version}")
-
-        label_processing_result = LabelProcessingResult()
-        label_processing_result.kmat = label.kmat
-        label_processing_result.version = label.version
-        label_processing_result.original_filename = Path(label.label_image_path).stem  # Store original filename without extension
-        
-        etalon_text_blocks = _get_etalon_text_blocks(label.kmat, label.version, label.label_image_path )
-        
-        # Step 1: Layout detection
-        app_logger.info(SERVICE_NAME, f"Starting layout detection for {label.kmat}")
-        layout_blocks = layout_detector.extract_blocks(label.label_image_path)
-        #layout_blocks = LoadLayoutBlocks(label.label_image_path)
-        
-        # Save detected blocks as artifacts (debug files go to temp/)
-        if LOG_LEVEL == "DEBUG":
-            for i, layout_block in enumerate(layout_blocks):
-                artifact_service.save_artifact(
-                    service=SERVICE_NAME,
-                    file_name=f"temp/{Path(label.label_image_path).stem}_{i}.jpg",
-                    data=layout_block.image_crop
-                )
-            
-        
-        # Step 2: OCR processing
-        app_logger.info(SERVICE_NAME, f"Starting OCR processing for {label.kmat}")
-        
-        # Extract language hints from etalon files for better OCR accuracy
-        language_hints = extract_languages_from_etalon_files(label.label_image_path)
-        app_logger.info(SERVICE_NAME, f"Language hints: {language_hints}")
-
-        processing_queue = deque(layout_blocks)
-        splitted_text_block_indicies = []
-        
-        while processing_queue:
-            layout_block = processing_queue.popleft()
-
-            json_vision_filename = f"{artifact_service.get_service_dir(SERVICE_NAME) / Path(label.label_image_path).stem}_{layout_block.index}_vision.json"
-            ocr_result = ocr_processor.process(
-                layout_block.image_crop, 
-                input_filename=str(label.label_image_path), 
-                json_vision_filename=json_vision_filename,
-                language_hints=language_hints
-            )
-            
-            ocr_result.text = refine_text_symbols(ocr_result.text)
-            for word in ocr_result.words:
-                word.text = refine_text_symbols(word.text)
-
-
-            #detect text block types and split if needed
-            block_type = classify_text_block ( ocr_result)
-
-            if block_type == "Z" and layout_block.index not in splitted_text_block_indicies:
-                layout_blocks_splitted = split_text_block_1 (layout_block, ocr_result)
-                
-                if len(layout_blocks_splitted) > 1:
-                    splitted_text_block_indicies.extend([split_block.index for split_block in layout_blocks_splitted])
-                    for split_block in layout_blocks_splitted:
-                        # Save split block images to temp/ (debug files)
-                        artifact_service.save_artifact(
-                            service=SERVICE_NAME,
-                            file_name=f"temp/{Path(label.label_image_path).stem}_{split_block.index}.jpg",
-                            data=split_block.image_crop
-                        )
-                        processing_queue.appendleft(split_block)
-                    continue;
-            
-            # Save OCR results as text artifacts in DEBUG mode (debug files go to temp/)
-            if LOG_LEVEL == "DEBUG":
-                input_name = Path(label.label_image_path).stem
-            
-                text_filename = f"temp/{input_name}_block_{i}.txt"
-                artifact_service.save_artifact(
-                    service=SERVICE_NAME,
-                    file_name=text_filename,
-                    data=f"Confidence: {ocr_result.confidence:.2f}\nLanguage: {ocr_result.language}\nExtracted Text:\n{ocr_result.text}"
-                )
-            # Step 3: fill in LabelProcessingResult.text_blocks
-            allergens = ""
-           
-            if ocr_result.language == "hy": # armenian
-                delimiters = [':', '!', '?',]
-            else:
-                delimiters = ['.', '!', '?']
-            sentences = split_words_into_sentences (ocr_result.words, ocr_result.language, delimiters)
-            if block_type == "A":
-                # classified_sentences = [sentence, type]
-                classify_ingredients_sentences(sentences)
-                try:
-                    ingridients_sentence_index = [sentence.index for sentence in sentences if sentence.category == "INGRIDIENTS"][0]
-
-                    #bolded_words = [word for word in sentences[ingridients_sentence_index].words if word.bold and word.text != " "]
-                    #allergens = detect_allergens(bolded_words, ocr_result.language)
-
-                    # Find the first colon
-                    for i, word in enumerate(sentences[ingridients_sentence_index].words):
-                        if word.text == ':':
-                            allergens = [word for word in sentences[ingridients_sentence_index].words[i + 1:] if word.bold and word.text != " "]
-                            break
-
-                except IndexError:
-                    allergens = []
-            
-            etalon_text = find_etalon_text(block_type, ocr_result.language, etalon_text_blocks)
-            lcs_results = []
-            if etalon_text and ocr_result.text:
-                lcs_results = all_common_substrings_by_words(
-                    etalon_text, 
-                    ocr_result.text, 
-                    min_length_words=2, 
-                    maximal_only=True,
-                    ignorable_symbols=",.()!:;- "
-                )
-            
-            #find etalon text block by type and language
-            text_block = TextBlock(
-                bbox=layout_block.bbox,
-                index=layout_block.index,
-                sentences=sentences,
-                text=ocr_result.text,
-                type=block_type,
-                allergens=allergens,
-                languages=[ocr_result.language],
-                etalon_text=etalon_text,
-                lcs_results=lcs_results
-            )
-        
-            label_processing_result.text_blocks.append(text_block)
-       
-        label_processing_result.rule_check_results = validate_label(label_processing_result)
-        
-        app_logger.info(SERVICE_NAME, f"Found {len(label_processing_result.rule_check_results)} errors for {label.kmat}")
-
-        
-        # Step 5: Generate validation report
-        from mlbox.services.LabelGuard import visualization
-        
-        validation_artifacts = visualization.generate_validation_report(
-            label_processing_result=label_processing_result,
-            label_image=label.label_image,
-            output_format="interactive_viewer"
-        )
-        
-        # Step 6: Save artifacts to disk using filenames from visualization
-        for filename, image in validation_artifacts.images:
-            artifact_service.save_artifact(
-                service=SERVICE_NAME,
-                file_name=filename,
-                data=image
-            )
-        
-        if validation_artifacts.html_report:
-            artifact_service.save_artifact(
-                service=SERVICE_NAME,
-                file_name=validation_artifacts.html_filename,
-                data=validation_artifacts.html_report
-            )
-            # Assign HTML report to the result so it can be returned via API
-            label_processing_result.html_report = validation_artifacts.html_report
-        
-        label_processing_results.append(label_processing_result)
-
-    
-    return label_processing_results
-
 
 def mask_bboxes_in_image(image: Image.Image, bboxes: List[tuple]) -> Image.Image:
     """
@@ -972,7 +836,13 @@ def analyze(request_json: dict) -> LabelProcessingResult:
     if blocks_data:
         # Create lightweight TextBlocks from provided blocks
         for block_dict in blocks_data:
-            block_bbox = tuple(block_dict.get("bbox", []))
+            # Normalize bbox coordinates to integers for PIL operations
+            raw_bbox = block_dict.get("bbox", [])
+            if len(raw_bbox) != 4:
+                raise ValueError(f"Invalid bbox for block {block_dict.get('id')}: {raw_bbox}")
+            x1, y1, x2, y2 = [int(round(c)) for c in raw_bbox]
+            block_bbox = (x1, y1, x2, y2)
+            
             layout_blocks_input.append(LayoutTextBlock(
                 index=block_dict.get("id", ""),
                 bbox=block_bbox,
@@ -980,19 +850,29 @@ def analyze(request_json: dict) -> LabelProcessingResult:
                 label=block_dict.get("category", ""),
                 score=1
             ))
-
-        # to do: куьщму all input bboxes from label_image leave blank space on their places
+        
+        # Mask all provided bboxes on the working image (leave blank space on their places)
         for layout_block in layout_blocks_input:
             x1, y1, x2, y2 = layout_block.bbox
-            image.paste(Image.new('RGB', (x2 - x1, y2 - y1), (255, 255, 255)), (x1, y1))
+            width = max(0, x2 - x1)
+            height = max(0, y2 - y1)
+            image.paste(Image.new('RGB', (width, height), (255, 255, 255)), (x1, y1))
         
         
     detected_layout_blocks = layout_detector.extract_blocks(image)
+
+    if len(detected_layout_blocks) > 0 and len(layout_blocks_input) > 0:
+        last_index  = max( int (layout_block.index) for layout_block in detected_layout_blocks)
+        for layout_block in layout_blocks_input:
+            last_index += 1
+            layout_block.index = str(last_index)
+
     detected_layout_blocks.extend(layout_blocks_input)
     
     # Convert to TextBlocks
     layout_blocks_to_process = []
     for layout_block in detected_layout_blocks:
+        modified=layout_block.index in [layout_block.index for layout_block in layout_blocks_input]
         text_block = TextBlock(
             bbox=layout_block.bbox,
             index=layout_block.index,
@@ -1001,15 +881,19 @@ def analyze(request_json: dict) -> LabelProcessingResult:
             type="",
             allergens=[],
             languages="",
-            modified=False
+            modified=modified
         )
         layout_blocks_to_process.append(text_block)
     
     # Step 2: Get etalon data
+    # Etalon is optional for re-analysis; when not provided we simply skip etalon-based checks.
+    etalon_text_blocks: List[dict] = []
     if etalon_path_str:
-        # Process etalon image: OCR to extract text blocks
-        app_logger.info(SERVICE_NAME, "No etalon_path provided, trying to load from JSON file")
+        # Load etalon text blocks from JSON/etalon source
+        app_logger.info(SERVICE_NAME, f"Loading etalon text blocks from: {etalon_path_str}")
         etalon_text_blocks = _get_etalon_text_blocks(kmat, version, etalon_path_str)
+    else:
+        app_logger.info(SERVICE_NAME, "No etalon_path provided, proceeding without etalon text blocks")
     
     # Step 3: OCR processing and enrichment
     app_logger.info(SERVICE_NAME, f"Starting OCR processing for {len(layout_blocks_to_process)} blocks")
@@ -1037,7 +921,11 @@ def analyze(request_json: dict) -> LabelProcessingResult:
         # Vision cache files go in cache/ subdirectory
         cache_dir = artifact_service.get_service_dir(SERVICE_NAME) / "cache"
         cache_dir.mkdir(parents=True, exist_ok=True)
-        json_vision_filename = str(cache_dir / f"{original_filename}_{text_block.index}_vision.json")
+        json_vision_filename = None
+
+        bbox_str = "_".join(str(v) for v in text_block.bbox)
+        json_vision_filename = str(cache_dir / f"{original_filename}_{text_block.index}_{bbox_str}_vision.json")
+            
         ocr_result = ocr_processor.process(
             cropped_image,
             input_filename=str(image_path),
@@ -1072,9 +960,13 @@ def analyze(request_json: dict) -> LabelProcessingResult:
         # Classify sentences if type is A (ingredients)
         if text_block.type == "A":
             classify_ingredients_sentences(sentences)
-            # Detect allergens
+            # Detect allergens - look for the ingredients sentence by category code 'D'
             try:
-                ingredients_sentence_index = [sentence.index for sentence in sentences if sentence.category == "INGRIDIENTS"][0]
+                ingredients_sentence_index = [
+                    sentence.index
+                    for sentence in sentences
+                    if sentence.category == "D"
+                ][0]
                 for i, word in enumerate(sentences[ingredients_sentence_index].words):
                     if word.text == ':':
                         allergens = [word for word in sentences[ingredients_sentence_index].words[i + 1:] if word.bold and word.text != " "]
@@ -1281,7 +1173,7 @@ def detect_allergens(words: List[str], language: str = "en") -> List[str]:
         openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
         if not openrouter_api_key:
             app_logger.error("labelguard", "OPENROUTER_API_KEY environment variable not set")
-            return []
+            raise ValueError("OPENROUTER_API_KEY environment variable not set")
         
         client = OpenAI(
             api_key=openrouter_api_key,
@@ -1359,7 +1251,7 @@ def detect_allergens_with_llm (words: List[str], language: str = "en") -> List[s
         openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
         if not openrouter_api_key:
             app_logger.error("labelguard", "OPENROUTER_API_KEY environment variable not set")
-            return []
+            raise ValueError("OPENROUTER_API_KEY environment variable not set")
         
         client = OpenAI(
             api_key=openrouter_api_key,
@@ -1433,22 +1325,12 @@ def classify_ingredients_sentences(sentences: List[Sentence]) -> None:  # Fixed 
     if not sentences:
         return
     
-    # Define categories with descriptions
-    categories = {
-            "PRODUCT_NAME": "Product name",
-            "ALLERGEN_PHRASE": "Sentences that list possible allergens",
-            "STORAGE_CONDITIONS": "Storage instructions including temperature, humidity, and preservation conditions",
-            "INGRIDIENTS": "Sentences that list ingredients or composition",
-            "CONTACT_INFO": "contact info, address, phone, email",
-            "UNKNOWN": "Unclassified or ambiguous text"
-    }
-    
     try:
         # Get OpenAI API key from environment variable
         openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
         if not openrouter_api_key:
             app_logger.error("labelguard", "OPENROUTER_API_KEY environment variable not set")
-            return
+            raise ValueError("OPENROUTER_API_KEY environment variable not set")
         
         client = OpenAI(
             api_key=openrouter_api_key,
@@ -1462,31 +1344,21 @@ def classify_ingredients_sentences(sentences: List[Sentence]) -> None:  # Fixed 
         ]
         sentences_text = "\n".join(numbered_sentences)
         
-        # Build categories description
-        categories_desc = "\n".join([
-            f"- {key}: {description}" 
-            for key, description in categories.items()
-        ])
+        # Build categories description from JSON-backed SENTENCE_CATEGORIES (keys are codes like A, B, C, ...)
+        category_codes = list(SENTENCE_CATEGORIES.keys())
+        categories_desc = "\n".join(
+            f"- {code}: {cfg.get('description', '')}"
+            for code, cfg in SENTENCE_CATEGORIES.items()
+        )
         
-        prompt = f"""You are given a list of multilanguage sentences from a product label. Classify each sentence into these categories: {', '.join(categories.keys())}.
-
-Categories:
-{categories_desc}
-
-Instructions:
-1. For each sentence, determine which category it belongs to.
-2. Translate non-English text to understand the meaning before classifying.
-3. Return a **valid JSON object only** with category names as keys and lists of sentence indices as values.
-4. Do not include any extra text, explanations, or comments.
-5. If a category has no sentences, return an empty list for that key.
-6. The JSON must be strictly parseable by `json.loads()`.
-7. DO NOT OUTPUT ANYTHING OTHER THAN VALID JSON.
-
-Sentences:
-{sentences_text}
-
-Return format example: {{"PRODUCT_NAME": [0, 1], "ALLERGEN_PHRASE": [2], "INGRIDIENTS": [3], "CONTACT_INFO": [4, 5], , "UNKNOWN": []}}
-"""
+        # Render prompt from Jinja template
+        template_path = ROOT_DIR / "assets" / SERVICE_NAME / "prompts" / "classify-ingredients-sentences.jinja"
+        template = Template(template_path.read_text())
+        prompt = template.render(
+            sentences_text=sentences_text,
+            categories_desc=categories_desc,
+            category_codes=category_codes,
+        )
 
         # Check cache first
         llm_cache_file_prefix = f"cls_ingr_{sentences_text[:12]}"
@@ -1522,7 +1394,8 @@ Return format example: {{"PRODUCT_NAME": [0, 1], "ALLERGEN_PHRASE": [2], "INGRID
         
         # Set category for each sentence
         for sentence in sentences:
-            sentence.category = index_to_category.get(sentence.index, "UNKNOWN")
+            # Default to 'Z' (unknown) if not classified
+            sentence.category = index_to_category.get(sentence.index, "Z")
         
         app_logger.info("labelguard", f"Successfully classified {len(sentences)} sentences")
             
@@ -1548,7 +1421,7 @@ def split_text_block_1(layout_block: LayoutTextBlock, ocr_result: OCRResult) -> 
     openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
     if not openrouter_api_key:
         app_logger.error("labelguard", "OPENROUTER_API_KEY environment variable not set")
-        return TextBlockDetectionList(blocks=[])
+        raise ValueError("OPENROUTER_API_KEY environment variable not set")
     
     client = OpenAI(
         api_key=openrouter_api_key,
@@ -1685,7 +1558,7 @@ def split_text_block (layout_block: LayoutTextBlock, ocr_result: OCRResult) -> L
     openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
     if not openrouter_api_key:
         app_logger.error("labelguard", "OPENROUTER_API_KEY environment variable not set")
-        return TextBlockDetectionList(blocks=[])
+        raise ValueError("OPENROUTER_API_KEY environment variable not set")
     
     client = OpenAI(
         api_key=openrouter_api_key,
@@ -1799,7 +1672,7 @@ def classify_text_block (ocr_result: OCRResult) -> str:
     openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
     if not openrouter_api_key:
         app_logger.error("labelguard", "OPENROUTER_API_KEY environment variable not set")
-        return TextBlockDetectionList(blocks=[])
+        raise ValueError("OPENROUTER_API_KEY environment variable not set")
     
     client = OpenAI(
         api_key=openrouter_api_key,

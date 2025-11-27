@@ -86,7 +86,7 @@ class VisualMarker:
 @dataclass
 class CategoryNumberResult:
     """Numbers for a specific sentence category"""
-    category: str  # 'INGRIDIENTS' or 'STORAGE_CONDITIONS'
+    category: str  # sentence category code (e.g., 'D' for ingredients, 'C' for storage)
     actual_numbers: List[str] = field(default_factory=list)      # Numbers found in THIS block's sentences
     reference_numbers: List[str] = field(default_factory=list)   # Reference set from ALL blocks
 
@@ -118,7 +118,7 @@ class RuleCheckResult:
 
 @dataclass
 class NumbersCheckResult(RuleCheckResult):
-    """Result for numbers validation in INGRIDIENTS and STORAGE_CONDITIONS"""
+    """Result for numbers validation across ingredient-related sentence categories"""
     category_results: List[CategoryNumberResult] = field(default_factory=list)
 
 

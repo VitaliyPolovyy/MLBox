@@ -15,7 +15,7 @@
     }
     
     #imagePanel {
-      flex: 1;
+      flex: 0 0 55%;
       position: relative;
       overflow: hidden;
       border-right: 1px solid #ccc;
@@ -30,29 +30,38 @@
     }
     
     #messagePanel {
-      flex: 1;
+      flex: 0 0 45%;
       padding: 10px;
       overflow-y: auto;
       background-color: #fff;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #222;
+    }
+    
+    /* Draggable vertical divider between panels */
+    #divider {
+      /* Slightly thinner but still easy to grab */
+      width: 7px;
+      min-width: 7px;
+      cursor: col-resize;
+      height: 100vh;
+      background-color: #444;
+      /* Add a subtle visual cue so it stands out between panels */
+      box-shadow: inset 2px 0 0 #222, inset -2px 0 0 #222;
+    }
+
+    #divider:hover {
+      background-color: #ccc;
+    }
+
+    body.resizing {
+      cursor: col-resize;
+      user-select: none;
     }
     
     canvas {
       display: block;
-    }
-    
-    #debugInfo {
-      position: absolute;
-      top: 5px;
-      left: 5px;
-      background: rgba(0, 0, 0, 0.7);
-      color: #0f0;
-      padding: 8px;
-      font-family: monospace;
-      font-size: 12px;
-      border-radius: 4px;
-      pointer-events: none;
-      z-index: 1000;
-      white-space: pre;
     }
     
     #controlPanel {
@@ -90,17 +99,17 @@
     }
     
     #filterPanel {
-      font-size: 18px;
+      font-size: 14px;
       font-family: inherit;
-      margin-bottom: 22px;
-      padding-bottom: 15px;
+      margin-bottom: 18px;
+      padding-bottom: 10px;
       border-bottom: 1px solid #ddd;
     }
     
     #filterPanel label {
       display: inline-block;
-      margin-right: 18px;
-      margin-bottom: 6px;
+      margin-right: 16px;
+      margin-bottom: 4px;
       cursor: pointer;
     }
     
@@ -110,38 +119,158 @@
     
     .rule-count {
       font-weight: 600;
+      font-size: 13px;
     }
     
     .rule-count.has-errors {
-      color: #d00;
+      color: #b00020;
     }
     
     .rule-count.no-errors {
-      color: #888;
+      color: #777;
     }
     
     #msgContent {
       margin-top: 10px;
+    }
+
+    /* Right panel typography */
+    .lg-heading {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .lg-heading--error {
+      color: #b00020;
+    }
+
+    .lg-heading--ok {
+      color: #166534;
+    }
+
+    .lg-section {
+      margin-bottom: 14px;
+    }
+
+    /* Error list block card */
+    .lg-error-block {
+      margin-top: 12px;
+      padding: 9px 12px 8px 14px;
+      border-radius: 6px;
+      border: 1px solid #d5e3f0;
+      background-color: #f7faff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+      position: relative;
+    }
+
+    .lg-error-block::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      border-radius: 6px 0 0 6px;
+      background-color: #2563eb; /* neutral blue accent */
+    }
+
+    .lg-error-block:hover {
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+      border-color: #c0d4f0;
+    }
+
+    .lg-separator {
+      margin: 10px 0;
+      border: 0;
+      border-top: 1px solid #ccc;
+    }
+
+    .lg-block-header {
+      background-color: #f5f5f5;
+      padding: 6px 8px;
+      margin-bottom: 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 16px; /* Match lg-heading */
+      color: #222;
+    }
+
+    .lg-muted {
+      color: #666;
+      font-size: 13px;
+    }
+
+    .lg-list {
+      margin: 4px 0 0 0;
+      padding-left: 18px;
+    }
+
+    .lg-list li {
+      margin-bottom: 2px;
+    }
+
+    .lg-rule-error {
+      margin-bottom: 6px;
+    }
+
+    .lg-filter-checkbox {
+      transform: scale(1.1);
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    /* Collapsible sections in details panel */
+    .lg-collapsible {
+      border-radius: 4px;
+    }
+
+    .lg-collapsible-header {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .lg-collapsible-icon {
+      font-size: 12px;
+      margin-right: 6px;
+      color: #666;
+    }
+
+    .lg-collapsible-title {
+      font-size: 15px;
+      color: #222;
+      font-weight: 600;
+    }
+
+    .lg-collapsible-body {
+      margin-top: 6px;
+    }
+
+    .lg-collapsible:not(.lg-collapsible--open) .lg-collapsible-body {
+      display: none;
     }
   </style>
 </head>
 <body>
   <!-- Left Panel: Image with bboxes -->
   <div id="imagePanel">
-    <div id="debugInfo">Hover over blocks to see info</div>
+    <!-- Control buttons (moved from right panel) -->
+    <div id="controlPanel">
+      <button id="analyzeBtn">Аналізувати</button>
+    </div>
     <canvas id="labelCanvas"></canvas>
   </div>
+
+  <!-- Draggable divider -->
+  <div id="divider"></div>
   
   <!-- Right Panel: Controls and Details -->
   <div id="messagePanel">
-    <!-- Control buttons -->
-    <div id="controlPanel">
-      <button id="analyzeBtn">Analyze</button>
-    </div>
-    
     <!-- Category selector (shown when bbox selected in edit mode) -->
     <div id="categorySelector" style="display: none; margin: 10px 0;">
-      <label>Category: 
+      <label>
         <select id="categorySelect">
           <option value="">-- Select --</option>
           <option value="A">A</option>
@@ -150,6 +279,7 @@
           <option value="D">D</option>
         </select>
       </label>
+      <span id="languageLabel" class="lg-muted" style="margin-left: 8px;"></span>
     </div>
     
     <!-- Filter panel for rule types -->
@@ -160,7 +290,18 @@
   </div>
   
   <!-- JavaScript logic -->
-  <script src="/assets/labelguard/js/labelguard-ui.js"></script>
+  <script>
+    // Determine script path based on how viewer.html is being served
+    // If accessed via /labelguard/viewer.html (server), use /labelguard/assets/...
+    // If accessed via /assets/labelguard/html/viewer.html (Live Preview), use /assets/...
+    const isServerPath = window.location.pathname.startsWith('/labelguard/');
+    const scriptPath = isServerPath 
+      ? '/labelguard/assets/labelguard/js/labelguard-ui.js'
+      : '/assets/labelguard/js/labelguard-ui.js';
+    const script = document.createElement('script');
+    script.src = scriptPath;
+    document.body.appendChild(script);
+  </script>
 </body>
 </html>
 
