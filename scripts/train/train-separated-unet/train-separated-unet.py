@@ -1,7 +1,7 @@
 import shutil
 import cv2
 from pathlib import Path
-from PIL import Image as PILImage, Image
+from PIL import Image
 import numpy as np
 import torch
 import torch.nn as nn
@@ -151,7 +151,7 @@ def train_unet(
     # Loss and optimizer
     criterion = CombinedLoss()
     optimizer = Adam(model.parameters(), lr=learning_rate)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10)
     
     # Training loop
     best_val_loss = float('inf')

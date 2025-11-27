@@ -17,6 +17,7 @@ from openpyxl.utils import get_column_letter
 from PIL import Image as PILImage
 from mlbox.models.peanuts.cls.yolo_cls_model import YOLOPeanutsClassifier
 from mlbox.models.peanuts.detection.yolo_detector_model import YOLOPeanutsDetector
+from mlbox.models.peanuts.detection.unet_detector_model import UNetPeanutsDetector
 from mlbox.services.peanuts.datatype import Ellipse, Status, PeanutProcessingRequest, PeanutProcessingResult, OnePeanutProcessingResult, BaseResponseJson, PeanutDataResponseJson
 from mlbox.settings import ROOT_DIR, LOG_LEVEL
 from mlbox.utils.cvtools import preprocess_images_with_white_rectangle
@@ -255,7 +256,7 @@ def process_peanuts_images(
                 repo_id=HF_PEANUT_SEG_SEPARATED_REPO_ID, filename=HF_PEANUT_SEG_SEPARATED_FILE, token=HF_TOKEN
             )
             app_logger.info(SERVICE_NAME, f"Separated segmentation model downloaded: {separated_seg_model_path}")
-            separated_detector = YOLOPeanutsDetector(separated_seg_model_path)
+            separated_detector = UNetPeanutsDetector(separated_seg_model_path)
             app_logger.info(SERVICE_NAME, f"Separated segmentation model initialized successfully")
         except Exception as e:
             error_trace = traceback.format_exc()
@@ -812,7 +813,7 @@ def test_process_requests(input_folder: Path, output_folder: Path):
 
     # Gather all image files from the input folder
     image_files = list(
-        input_folder.glob("30_10_2025_16_29.jpg")
+        input_folder.glob("*.jpg")
     )  # You can filter by extension, e.g. "*.jpg" if needed
 
     # Prepare requests by reading each image
