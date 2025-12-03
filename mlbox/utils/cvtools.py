@@ -181,7 +181,7 @@ def detect_white_rectangles(
     Detect white rectangles in image. If aspect_ratio provided, filter and sort by ratio match.
 
     Args:
-        image: Input BGR image
+        image: Input RGB image
         aspect_ratio: Expected height/width ratio (optional)
         angle_tolerance: Maximum angle deviation from 90°
         aspect_ratio_tolerance: Maximum aspect ratio deviation
@@ -226,7 +226,7 @@ def detect_white_rectangles(
 
     try:
         rectangles = []
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         ret, _ = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         min_area = image.shape[0] * image.shape[1] / 9
 
@@ -524,8 +524,9 @@ if __name__ == "__main__":
     specific_file = "POCO_5200_10_WHITE.jpg"
     image_path = input_folder / specific_file
 
-    # Load the image
-    np_image = cv2.imread(str(image_path))
+    # Load the image via PIL as RGB (the rest of the pipeline now assumes RGB)
+    pil_image = PILImage.open(image_path).convert("RGB")
+    np_image = np.array(pil_image)
     
     # Process the single image using the preprocessing function
     processed_data = preprocess_images_with_white_rectangle([np_image])

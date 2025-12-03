@@ -56,7 +56,8 @@ class UNetPeanutsDetector(AbstractPeanutsDetector):
             # Store original size
             h_orig, w_orig = image.shape[:2]
             
-            # Preprocess image
+            # Images coming from peanuts service are already RGB (PIL -> np.array),
+            # same as in the training and assessment scripts, so we pass them directly.
             transformed = self.transform(image=image)
             img_tensor = transformed['image'].unsqueeze(0).to(self.device)
             
@@ -64,7 +65,6 @@ class UNetPeanutsDetector(AbstractPeanutsDetector):
             with torch.no_grad():
                 output = self.model(img_tensor)
                 pred_mask = torch.sigmoid(output).cpu().numpy()[0, 0]
-                # Threshold at 0.5
                 pred_mask = (pred_mask > 0.5).astype(np.uint8)
             
             # Resize mask back to original image size

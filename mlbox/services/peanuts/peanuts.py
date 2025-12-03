@@ -247,20 +247,20 @@ def process_peanuts_images(
         app_logger.error(SERVICE_NAME, f"Failed to initialize detector model | path={det_model_path} | error={str(e)}\n{error_trace}")
         raise
     
-    # Load separated segmentation model if configured
+    # Load separated segmentation model (UNet) from Hugging Face, as before
     separated_detector = None
     if HF_PEANUT_SEG_SEPARATED_REPO_ID and HF_PEANUT_SEG_SEPARATED_FILE:
+        
         try:
-            app_logger.info(SERVICE_NAME, f"Starting separated segmentation model download | repo_id={HF_PEANUT_SEG_SEPARATED_REPO_ID} | file={HF_PEANUT_SEG_SEPARATED_FILE}")
             separated_seg_model_path = hf_hub_download(
-                repo_id=HF_PEANUT_SEG_SEPARATED_REPO_ID, filename=HF_PEANUT_SEG_SEPARATED_FILE, token=HF_TOKEN
+                repo_id=HF_PEANUT_SEG_SEPARATED_REPO_ID,
+                filename=HF_PEANUT_SEG_SEPARATED_FILE,
+                token=HF_TOKEN,
             )
-            app_logger.info(SERVICE_NAME, f"Separated segmentation model downloaded: {separated_seg_model_path}")
             separated_detector = UNetPeanutsDetector(separated_seg_model_path)
-            app_logger.info(SERVICE_NAME, f"Separated segmentation model initialized successfully")
         except Exception as e:
             error_trace = traceback.format_exc()
-            app_logger.error(SERVICE_NAME, f"Failed to load separated segmentation model | error={str(e)}\n{error_trace}")
+            app_logger.error(SERVICE_NAME, f"Failed to load separated segmentation model | error={str(e)}\n{error_trace}",)
             raise
     
     app_logger.info(SERVICE_NAME, f"Starting peanut detection | images_count={len(preprocessed_images)}")
@@ -320,9 +320,11 @@ def process_peanuts_images(
             # Save the cropped peanut image
             if LOG_LEVEL == "DEBUG":
                 pil_image = PILImage.fromarray(one_peanut_image)
+                original_stem = Path(input_image_filename).stem
                 artifact_service.save_artifact(
                     service=SERVICE_NAME,
-                    file_name=f"{index}.jpg",
+                    # Use ordered_index so filenames, Excel rows and comparison labels match
+                    file_name=f"{original_stem}_{ordered_index}.jpg",
                     data=pil_image,
                     sub_folder="temp"
                 )
@@ -343,6 +345,8 @@ def process_peanuts_images(
             contour_separated = None
             ellipse_separated = None
             
+            # UNet expects RGB images (training & assessment use RGB),
+            # while preprocessed_image/one_peanut_image are BGR (OpenCV).
             cropped_detections = separated_detector.detect(
                 [one_peanut_image], verbose=False, imgsz=128, conf=0.5
             )
@@ -374,11 +378,12 @@ def process_peanuts_images(
                 contours_separated, _ = cv2.findContours(
                     mask_separated.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE
                 )
-                contour_separated = max(contours_separated, key=cv2.contourArea)
-                contour_separated_reshaped = contour_separated.reshape(-1, 2)
-                center_separated, axes_separated, angle_separated = cv2.fitEllipse(contour_separated_reshaped)
-                axes_separated = (axes_separated[0] * 0.9, axes_separated[1] * 0.9)
-                ellipse_separated = Ellipse(center=center_separated, axes=axes_separated, angle=angle_separated)
+                if contours_separated:
+                    contour_separated = max(contours_separated, key=cv2.contourArea)
+                    contour_separated_reshaped = contour_separated.reshape(-1, 2)
+                    center_separated, axes_separated, angle_separated = cv2.fitEllipse(contour_separated_reshaped)
+                    axes_separated = (axes_separated[0] * 0.9, axes_separated[1] * 0.9)
+                    ellipse_separated = Ellipse(center=center_separated, axes=axes_separated, angle=angle_separated)
 
             peanut = OnePeanutProcessingResult(
                 index=ordered_index,
@@ -632,17 +637,64 @@ def create_comparison_image(
     
     h, w = result_image.shape[:2]
     
-    # Draw contours for each peanut
+    # Draw shapes and indexes for each peanut
     for peanut in peanuts:
-        # Draw full image segmentation contour (red)
-        if peanut.contour is not None:
-            # Draw red contour (BGR format: Blue=0, Green=0, Red=255)
-            cv2.drawContours(result_image, [peanut.contour], -1, (0, 0, 255), 2)
-        
-        # Draw separated segmentation contour (green)
+        # Draw OLD ellipse (from original mask) in red
+        if peanut.ellipse is not None:
+            center = (int(peanut.ellipse.center[0]), int(peanut.ellipse.center[1]))
+            axes = (
+                int(peanut.ellipse.axes[0] / 2),
+                int(peanut.ellipse.axes[1] / 2),
+            )
+            angle = peanut.ellipse.angle
+            cv2.ellipse(
+                result_image,
+                center,
+                axes,
+                angle,
+                0,
+                360,
+                (0, 0, 255),  # red ellipse for old mask
+                2,
+            )
+
+        # Draw separated segmentation contour (green) – NEW mask
         if peanut.contour_separated is not None:
-            # Draw green contour (BGR format: Blue=0, Green=255, Red=0)
-            cv2.drawContours(result_image, [peanut.contour_separated], -1, (0, 255, 0), 2)
+            cv2.drawContours(
+                result_image,
+                [peanut.contour_separated],
+                -1,
+                (0, 255, 0),  # green contour for new mask
+                2,
+            )
+
+            # Draw rotated bounding box (yellow) from separated contour
+            rect = cv2.minAreaRect(peanut.contour_separated)
+            box = cv2.boxPoints(rect).astype(int)
+            cv2.drawContours(
+                result_image,
+                [box],
+                0,
+                (0, 255, 255),  # yellow rotated bbox on new mask
+                2,
+            )
+
+        # Draw peanut index near its original (YOLO) contour as anchor
+        if peanut.contour is not None:
+            moments = cv2.moments(peanut.contour)
+            if moments["m00"] != 0:
+                cx = int(moments["m10"] / moments["m00"])
+                cy = int(moments["m01"] / moments["m00"])
+                cv2.putText(
+                    result_image,
+                    str(peanut.index),
+                    (cx, cy),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (255, 255, 255),
+                    2,
+                    cv2.LINE_AA,
+                )
     
     # Convert BGR to RGB for PIL
     result_image = cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB)
@@ -813,7 +865,7 @@ def test_process_requests(input_folder: Path, output_folder: Path):
 
     # Gather all image files from the input folder
     image_files = list(
-        input_folder.glob("*.jpg")
+        input_folder.glob("31_10_2025_09_30.jpg")
     )  # You can filter by extension, e.g. "*.jpg" if needed
 
     # Prepare requests by reading each image
