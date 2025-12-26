@@ -284,7 +284,7 @@ def predict_and_save(input_dir, output_dir, yolo_path, annotation_folder):
 
 if __name__ == "__main__":
     
-    test_images_dir = ROOT_DIR / "artifacts" / "Peanuts" / "temp"
+    test_images_dir = ROOT_DIR / "artifacts" / "peanuts" / "temp"
     test_masks_dir = None # dataset_dir / "test" / "masks"
     
     # Experiment folder (set manually)

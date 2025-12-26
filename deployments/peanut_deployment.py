@@ -7,7 +7,9 @@ import asyncio
 from io import BytesIO
 from typing import List
 from pathlib import Path
+from datetime import datetime
 import ray
+import base64
 from jsonschema import ValidationError as JSONSchemaValidationError
 from jsonschema import validate
 
@@ -15,7 +17,7 @@ from jsonschema import validate
 from PIL import Image as PILImage
 from ray import serve
 from starlette.requests import Request
-from mlbox.services.peanuts.datatype import PeanutInputJson
+from mlbox.services.peanuts.datatype import PeanutInputJson, BaseResponseJson, PeanutDataResponseJson
 from mlbox.services.peanuts import peanuts
 from mlbox.settings import ROOT_DIR
 from mlbox.utils.logger import get_logger, get_artifact_service
@@ -155,28 +157,63 @@ class Peanuts:
                         request_id = request_ids[original_idx]
                         start_time = start_times[original_idx]
                         
+                        # Get request details from peanut_requests
+                        peanut_request = peanut_requests[idx]
+                        alias = peanut_request.alias
+                        key = peanut_request.key
+                        image_filename = peanut_request.image_filename
+                        
                         # Calculate processing time
                         processing_time = time.time() - start_time if start_time else 0
                         
-                        # Create response data
-                        response_data = {
-                            "processing_time_seconds": processing_time,
-                            "status": processing_result.status,
-                            "message": processing_result.message,
-                            "output_xlsx_path": str(processing_result.excel_filename) if hasattr(processing_result, 'excel_filename') and processing_result.excel_filename else None
-                        }
-                        
-                        # Save result file as artifact if it exists
+                        # Read Excel file and encode as base64 if it exists
+                        excel_file_base64 = None
                         if hasattr(processing_result, 'excel_filename') and processing_result.excel_filename:
                             excel_path = Path(processing_result.excel_filename)
                             if excel_path.exists():
-                                # Read the Excel file data and save as artifact
+                                # Read the Excel file data
                                 with open(excel_path, 'rb') as f:
                                     excel_data = f.read()
-                                artifact_path = artifact_service.save_artifact("peanuts", f"result_{request_id}.xlsx", excel_data)
-                                # Update response data with artifact path
-                                if artifact_path:
-                                    response_data["output_xlsx_path"] = artifact_path
+                                
+                                # Encode Excel file as base64
+                                excel_file_base64 = base64.b64encode(excel_data).decode('utf-8')
+                                
+                                # Save result file as artifact
+                                artifact_service.save_artifact("peanuts", f"result_{request_id}.xlsx", excel_data)
+                        
+                        # Create response using the same format as callback handler (BaseResponseJson structure)
+                        if excel_file_base64:
+                            peanut_data = PeanutDataResponseJson(
+                                alias=alias,
+                                key=key,
+                                image_filename=image_filename,
+                                excel_file=excel_file_base64,
+                            )
+                            
+                            base_response = BaseResponseJson(
+                                status="Success" if processing_result.status == "success" else "Error",
+                                message=processing_result.message,
+                                service_name="Peanuts",
+                                timestamp=datetime.now().isoformat(),
+                                data=peanut_data.to_json()  # pylint: disable=no-member
+                            )
+                            
+                            # Convert BaseResponseJson to dict for JSON response
+                            response_data = json.loads(base_response.to_json())  # pylint: disable=no-member
+                        else:
+                            # Fallback response if Excel file is missing
+                            response_data = {
+                                "status": "Error",
+                                "message": processing_result.message or "Excel file not generated",
+                                "service_name": "Peanuts",
+                                "timestamp": datetime.now().isoformat(),
+                                "data": json.dumps({
+                                    "alias": alias,
+                                    "key": key,
+                                    "image_filename": image_filename or "unknown",
+                                    "excel_file": ""
+                                })
+                            }
                         
                         # Save response data as artifact
                         artifact_service.save_artifact("peanuts", f"response_{request_id}.json", response_data)
@@ -185,10 +222,7 @@ class Peanuts:
                         status = response_data.get("status", "unknown")
                         app_logger.info(self.SERVICE_NAME, f"Response sent | request_id={request_id} | status={status} | time={processing_time:.2f}s")
                         
-                        responses[original_idx] = self.create_response(
-                            status=processing_result.status,
-                            message=processing_result.message,
-                        )
+                        responses[original_idx] = response_data
                         
                 except Exception as e:
                     error_msg = f"Processing error: {str(e)}"
