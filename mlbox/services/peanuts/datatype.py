@@ -41,17 +41,15 @@ class Ellipse:
 class OnePeanutProcessingResult:
     index: int
     xyxy: Tuple[int, int, int, int]  # Bbox coordinates (x1, y1, x2, y2)
-    mask: Optional[np.ndarray]
+
     det_confidence: Optional[float]  # Confidence score for the detection
     class_id: Optional[np.ndarray] = None
     class_confidence: Optional[np.ndarray] = None
     image: Optional[PILImage.Image] = None  # Image of the peanut
+
+    mask: Optional[np.ndarray] = None
     contour: Optional[np.ndarray] = None
     ellipse: Optional[Ellipse] = None
-    # Separated segmentation fields (for comparison only)
-    mask_separated: Optional[np.ndarray] = None  # Separated segmentation mask (full image coordinates)
-    contour_separated: Optional[np.ndarray] = None  # Contour from separated mask
-    ellipse_separated: Optional[Ellipse] = None  # Ellipse fitted from separated contour
 
     @property
     def real_class(self):
@@ -144,51 +142,100 @@ class PeanutProcessingResult:
             else None
         )
 
+    @property
+    def sample_size(self) -> int:
+        return len(self.peanuts) if self.peanuts else 0
+
+    @property
+    def min_major_axis(self) -> Optional[float]:
+        major_axes = [
+            peanut.ellipse.axes[1] / self.pixels_per_mm
+            for peanut in self.peanuts
+            if peanut.ellipse
+        ]
+        return round(min(major_axes), 1) if major_axes else None
+
+    @property
+    def max_major_axis(self) -> Optional[float]:
+        major_axes = [
+            peanut.ellipse.axes[1] / self.pixels_per_mm
+            for peanut in self.peanuts
+            if peanut.ellipse
+        ]
+        return round(max(major_axes), 1) if major_axes else None
+
+    @property
+    def range_major_axis(self) -> Optional[float]:
+        major_axes = [
+            peanut.ellipse.axes[1] / self.pixels_per_mm
+            for peanut in self.peanuts
+            if peanut.ellipse
+        ]
+        return round(max(major_axes) - min(major_axes), 1) if major_axes else None
+
+    @property
+    def min_minor_axis(self) -> Optional[float]:
+        minor_axes = [
+            peanut.ellipse.axes[0] / self.pixels_per_mm
+            for peanut in self.peanuts
+            if peanut.ellipse
+        ]
+        return round(min(minor_axes), 1) if minor_axes else None
+
+    @property
+    def max_minor_axis(self) -> Optional[float]:
+        minor_axes = [
+            peanut.ellipse.axes[0] / self.pixels_per_mm
+            for peanut in self.peanuts
+            if peanut.ellipse
+        ]
+        return round(max(minor_axes), 1) if minor_axes else None
+
+    @property
+    def range_minor_axis(self) -> Optional[float]:
+        minor_axes = [
+            peanut.ellipse.axes[0] / self.pixels_per_mm
+            for peanut in self.peanuts
+            if peanut.ellipse
+        ]
+        return round(max(minor_axes) - min(minor_axes), 1) if minor_axes else None
+
     def create_result_image(self) -> PILImage.Image:
 
         result_image = self.original_image.copy()
         cv_image = np.array(result_image)
 
         for peanut in self.peanuts:
-
-            center = (int(peanut.ellipse.center[0]), int(peanut.ellipse.center[1]))
-            axes = (int(peanut.ellipse.axes[0] / 2), int(peanut.ellipse.axes[1] / 2))
-            class_id = peanut.real_class[0]
-
-            # Determine the color based on the class_id
-            if class_id == 0:
-                color = (255, 0, 0)
-            elif class_id == 1:
-                color = (0, 255, 0)
-            elif class_id == 2:
-                color = (0, 0, 255)
-            else:
-                color = (255, 0, 0)  # Default color (Blue)
-
-            cv2.ellipse(cv_image, center, axes, peanut.ellipse.angle, 0, 360, color, 2)
-
-            # Put peanut index in the middle of the ellipse
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            font_scale = 0.5
-            font_thickness = 2
-            text_size = cv2.getTextSize(
-                str(peanut.index), font, font_scale, font_thickness
-            )[0]
-            text_x = int(peanut.ellipse.center[0] - text_size[0] // 2)
-            text_y = int(peanut.ellipse.center[1] + text_size[1] // 2)
-            cv2.putText(
-                cv_image,
-                str(peanut.index),
-                (text_x, text_y),
-                font,
-                font_scale,
-                (0, 0, 0),
-                font_thickness,
-            )
-
-            if peanut.mask is not None and False:
+            # Draw mask contour in green
+            if peanut.mask is not None:
                 contours, _ = cv2.findContours(peanut.mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-                cv2.drawContours(cv_image, contours, -1, (0,0,150), 2)
+                if contours:
+                    cv2.drawContours(cv_image, contours, -1, (0, 255, 0), 2)  # Green contour
+
+            # Draw ellipse in red
+            if peanut.ellipse is not None:
+                center = (int(peanut.ellipse.center[0]), int(peanut.ellipse.center[1]))
+                axes = (int(peanut.ellipse.axes[0] / 2), int(peanut.ellipse.axes[1] / 2))
+                cv2.ellipse(cv_image, center, axes, peanut.ellipse.angle, 0, 360, (0, 0, 255), 2)  # Red ellipse
+
+                # Put peanut index in the middle of the ellipse
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                font_scale = 0.5
+                font_thickness = 2
+                text_size = cv2.getTextSize(
+                    str(peanut.index), font, font_scale, font_thickness
+                )[0]
+                text_x = int(peanut.ellipse.center[0] - text_size[0] // 2)
+                text_y = int(peanut.ellipse.center[1] + text_size[1] // 2)
+                cv2.putText(
+                    cv_image,
+                    str(peanut.index),
+                    (text_x, text_y),
+                    font,
+                    font_scale,
+                    (0, 0, 0),
+                    font_thickness,
+                )
 
             self.result_image = PILImage.fromarray(cv_image)
 

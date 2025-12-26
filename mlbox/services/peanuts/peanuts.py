@@ -12,8 +12,11 @@ from dotenv import load_dotenv
 from huggingface_hub import hf_hub_download
 from loguru import logger
 from openpyxl.drawing.image import Image as OpenPyxlImage
-from openpyxl.styles import Alignment
-from openpyxl.utils import get_column_letter
+from openpyxl.chart import BarChart, Reference
+from openpyxl.chart.label import DataLabelList
+from openpyxl.chart.marker import DataPoint
+from openpyxl.styles import Alignment, Font
+from openpyxl.utils import get_column_letter, column_index_from_string
 from PIL import Image as PILImage
 from mlbox.models.peanuts.cls.yolo_cls_model import YOLOPeanutsClassifier
 from mlbox.models.peanuts.detection.yolo_detector_model import YOLOPeanutsDetector
@@ -24,7 +27,7 @@ from mlbox.utils.cvtools import preprocess_images_with_white_rectangle
 from mlbox.utils.logger import get_logger, get_artifact_service
 
 CURRENT_DIR = Path(__file__).parent
-SERVICE_NAME = "Peanuts"
+SERVICE_NAME = "peanuts"
 app_logger = get_logger(ROOT_DIR)
 artifact_service = get_artifact_service(ROOT_DIR)
 
@@ -83,9 +86,10 @@ def process_requests(
         peanut_processing_result.status = Status.SUCCESS
         peanut_processing_result.error_message = "Successfully processed the request."
         peanut_processing_result.excel_filename = excel_file
-        post_rest_request_to_client(
-            ERP_ENDPOINT, excel_file, request.alias, request.key, request.image_filename
-        )
+        # Removed callback POST - results are now returned directly in the response
+        # post_rest_request_to_client(
+        #     ERP_ENDPOINT, excel_file, request.alias, request.key, request.image_filename
+        # )
 
     return peanut_processing_results
 
@@ -247,21 +251,31 @@ def process_peanuts_images(
         app_logger.error(SERVICE_NAME, f"Failed to initialize detector model | path={det_model_path} | error={str(e)}\n{error_trace}")
         raise
     
-    # Load separated segmentation model (UNet) from Hugging Face, as before
-    separated_detector = None
-    if HF_PEANUT_SEG_SEPARATED_REPO_ID and HF_PEANUT_SEG_SEPARATED_FILE:
-        
-        try:
-            separated_seg_model_path = hf_hub_download(
-                repo_id=HF_PEANUT_SEG_SEPARATED_REPO_ID,
-                filename=HF_PEANUT_SEG_SEPARATED_FILE,
-                token=HF_TOKEN,
-            )
-            separated_detector = UNetPeanutsDetector(separated_seg_model_path)
-        except Exception as e:
-            error_trace = traceback.format_exc()
-            app_logger.error(SERVICE_NAME, f"Failed to load separated segmentation model | error={str(e)}\n{error_trace}",)
-            raise
+    # Load UNet segmentation model from Hugging Face (required for primary segmentation)
+    app_logger.info(SERVICE_NAME, f"Starting UNet segmentation model download | repo_id={HF_PEANUT_SEG_SEPARATED_REPO_ID} | file={HF_PEANUT_SEG_SEPARATED_FILE}")
+    if not HF_PEANUT_SEG_SEPARATED_REPO_ID or not HF_PEANUT_SEG_SEPARATED_FILE:
+        raise ValueError("HF_PEANUT_SEG_SEPARATED_REPO_ID and HF_PEANUT_SEG_SEPARATED_FILE must be set for UNet segmentation model")
+    
+    try:
+        separated_seg_model_path = hf_hub_download(
+            repo_id=HF_PEANUT_SEG_SEPARATED_REPO_ID,
+            filename=HF_PEANUT_SEG_SEPARATED_FILE,
+            token=HF_TOKEN,
+        )
+        app_logger.info(SERVICE_NAME, f"UNet segmentation model downloaded: {separated_seg_model_path}")
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        app_logger.error(SERVICE_NAME, f"Failed to download UNet segmentation model | error={str(e)}\n{error_trace}")
+        raise
+    
+    app_logger.info(SERVICE_NAME, f"Initializing UNet segmentation model: {separated_seg_model_path}")
+    try:
+        separated_detector = UNetPeanutsDetector(separated_seg_model_path)
+        app_logger.info(SERVICE_NAME, f"UNet segmentation model initialized successfully")
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        app_logger.error(SERVICE_NAME, f"Failed to initialize UNet segmentation model | path={separated_seg_model_path} | error={str(e)}\n{error_trace}")
+        raise
     
     app_logger.info(SERVICE_NAME, f"Starting peanut detection | images_count={len(preprocessed_images)}")
     try:
@@ -309,13 +323,10 @@ def process_peanuts_images(
         for index in sorted_indices:
 
             xyxy = sv_detection.xyxy[index]
-            mask = sv_detection.mask[index]
             x1, y1, x2, y2 = map(int, xyxy)
-            # Crop peanut image
+            
+            # Crop peanut image (same as ground-truth-comparison.py)
             one_peanut_image = preprocessed_image[y1:y2, x1:x2].copy()
-
-            # Set outside pixels to white
-            one_peanut_image[mask[y1:y2, x1:x2] is False] = 255
 
             # Save the cropped peanut image
             if LOG_LEVEL == "DEBUG":
@@ -331,24 +342,13 @@ def process_peanuts_images(
 
             one_peanut_images.append(one_peanut_image)
 
-            # find contour and fit elipse
-            contours, _ = cv2.findContours(
-                mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE
-            )
-            contour = max(contours, key=cv2.contourArea)
-            contour_reshaped = contour.reshape(-1, 2)
-            center, axes, angle = cv2.fitEllipse(contour_reshaped)
-            axes = (axes[0] * 0.9, axes[1] * 0.9)
-            elipse = Ellipse(center=center, axes=axes, angle=angle)
-
-            mask_separated = None
-            contour_separated = None
-            ellipse_separated = None
+            # Run UNet segmentation on cropped peanut (same algorithm as ground-truth-comparison.py)
+            mask = None
+            contour = None
+            elipse = None
             
-            # UNet expects RGB images (training & assessment use RGB),
-            # while preprocessed_image/one_peanut_image are BGR (OpenCV).
             cropped_detections = separated_detector.detect(
-                [one_peanut_image], verbose=False, imgsz=128, conf=0.5
+                [one_peanut_image], verbose=False
             )
             
             if (cropped_detections and 
@@ -372,30 +372,26 @@ def process_peanuts_images(
                 h, w = preprocessed_image.shape[:2]
                 full_mask = np.zeros((h, w), dtype=bool)
                 full_mask[y1:y2, x1:x2] = cropped_mask
-                mask_separated = full_mask
+                mask = full_mask
                 
                 # Find contour from full mask (already in full image coordinates)
-                contours_separated, _ = cv2.findContours(
-                    mask_separated.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE
+                contours, _ = cv2.findContours(
+                    mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE
                 )
-                if contours_separated:
-                    contour_separated = max(contours_separated, key=cv2.contourArea)
-                    contour_separated_reshaped = contour_separated.reshape(-1, 2)
-                    center_separated, axes_separated, angle_separated = cv2.fitEllipse(contour_separated_reshaped)
-                    axes_separated = (axes_separated[0] * 0.9, axes_separated[1] * 0.9)
-                    ellipse_separated = Ellipse(center=center_separated, axes=axes_separated, angle=angle_separated)
+                if contours:
+                    contour = max(contours, key=cv2.contourArea)
+                    contour_reshaped = contour.reshape(-1, 2)
+                    center, axes, angle = cv2.fitEllipse(contour_reshaped)
+                    elipse = Ellipse(center=center, axes=axes, angle=angle)
 
             peanut = OnePeanutProcessingResult(
                 index=ordered_index,
                 xyxy=xyxy,
                 mask=mask,
-                mask_separated=mask_separated,
                 contour=contour,
-                contour_separated=contour_separated,
                 det_confidence=sv_detection.confidence[index],
                 image=PILImage.fromarray(one_peanut_image),
                 ellipse=elipse,
-                ellipse_separated=ellipse_separated,
             )
             ordered_index = ordered_index + 1
 
@@ -509,6 +505,14 @@ def prepare_excel(peanut_processing_result: PeanutProcessingResult) -> Path:
                         if peanut.ellipse
                         else None
                     ),
+                    "площа маски, мм²": (
+                        round(
+                            np.sum(peanut.mask) / (peanut_processing_result.pixels_per_mm ** 2),
+                            2,
+                        )
+                        if peanut.mask is not None
+                        else None
+                    ),
                     "клас": YOLOPeanutsClassifier.class_names[peanut.real_class[0]],
                     "впевненність (клас)": round(peanut.real_class[1], 2),
                     "впевненність (маска)": round(peanut.det_confidence, 2),
@@ -517,8 +521,152 @@ def prepare_excel(peanut_processing_result: PeanutProcessingResult) -> Path:
             ]
         )
 
-        # Write the result table to the first sheet
-        result_table.to_excel(writer, sheet_name="Peanut Analysis", index=False)
+        # Initialize histogram variables
+        histogram_data_sheet = None
+        histogram_minor_df = None
+        histogram_major_df = None
+        minor_chart = None
+        major_chart = None
+        chart_space_rows = 15  # Default: no charts, tables start at row 0
+        
+        # Create histogram tables and charts FIRST (before writing main tables)
+        # Only add if we have peanuts with ellipses
+        if peanut_processing_result.peanuts and any(peanut.ellipse for peanut in peanut_processing_result.peanuts):
+            # Get axes values in mm
+            minor_axes_mm = [
+                peanut.ellipse.axes[0] / peanut_processing_result.pixels_per_mm
+                for peanut in peanut_processing_result.peanuts
+                if peanut.ellipse
+            ]
+            major_axes_mm = [
+                peanut.ellipse.axes[1] / peanut_processing_result.pixels_per_mm
+                for peanut in peanut_processing_result.peanuts
+                if peanut.ellipse
+            ]
+            
+            # Create combined histogram data sheet
+            histogram_data_sheet = writer.book.create_sheet(title="Данні для гистограми")
+            
+            # Create histogram for minor axis (width)
+            if minor_axes_mm:
+                min_val = min(minor_axes_mm) - 0.5
+                max_val = max(minor_axes_mm) + 0.5
+                bins = np.arange(min_val, max_val + 0.5, 0.5)
+                counts, bin_edges = np.histogram(minor_axes_mm, bins=bins)
+                
+                histogram_minor_data = []
+                for i in range(len(counts)):
+                    if i == 0:
+                        label = f"≤{bin_edges[i+1]:.1f}".replace('.', ',')
+                    else:
+                        label = f"{bin_edges[i]:.1f}-{bin_edges[i+1]:.1f}".replace('.', ',')
+                    histogram_minor_data.append({
+                        "мітка (меньша вісь)": label,
+                        "кількість (меньша вісь)": int(counts[i])
+                    })
+                
+                histogram_minor_df = pd.DataFrame(histogram_minor_data)
+                
+                # Add minor axis table header and data to combined sheet
+                minor_start_row = 1
+                for c_idx, col_name in enumerate(histogram_minor_df.columns, start=1):
+                    cell = histogram_data_sheet.cell(row=minor_start_row, column=c_idx, value=col_name)
+                    cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                    cell.font = Font(bold=True)
+                for r_idx, row in enumerate(histogram_minor_df.values, start=2):
+                    for c_idx, value in enumerate(row, start=1):
+                        cell = histogram_data_sheet.cell(row=r_idx, column=c_idx, value=value)
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                
+                # Create minor axis chart
+                minor_chart = BarChart()
+                minor_chart.type = "col"
+                minor_chart.style = 10
+                minor_chart.title = "Розподіл частот меньшої осі"
+                minor_chart.y_axis.title = "Частота, шт"
+                minor_chart.x_axis.delete = False
+                
+                # Reference to data in combined sheet
+                data = Reference(histogram_data_sheet, min_col=2, min_row=1, max_row=len(histogram_minor_df) + 1)
+                minor_chart.add_data(data, titles_from_data=True)
+                cats = Reference(histogram_data_sheet, min_col=1, min_row=2, max_row=len(histogram_minor_df) + 1)
+                minor_chart.set_categories(cats)
+                
+                s1 = minor_chart.series[0]
+                s1.graphicalProperties.solidFill = "4472C4"
+                s1.graphicalProperties.line.solidFill = "4472C4"
+                minor_chart.legend = None
+                
+                minor_chart.dataLabels = DataLabelList()
+                minor_chart.dataLabels.showVal = True
+                minor_chart.dataLabels.showCatName = False
+                minor_chart.dataLabels.showSerName = False
+                minor_chart.dataLabels.showLegendKey = False
+                minor_chart.dataLabels.showLeaderLines = False
+                minor_chart.dataLabels.position = "outEnd"
+                minor_chart.width = 15
+                minor_chart.height = 10
+            
+            # Create histogram for major axis (length)
+            if major_axes_mm:
+                min_val = min(major_axes_mm) - 0.5
+                max_val = max(major_axes_mm) + 0.5
+                bins = np.arange(min_val, max_val + 0.5, 0.5)
+                counts, bin_edges = np.histogram(major_axes_mm, bins=bins)
+                
+                histogram_major_data = []
+                for i in range(len(counts)):
+                    if i == 0:
+                        label = f"≤{bin_edges[i+1]:.1f}".replace('.', ',')
+                    else:
+                        label = f"{bin_edges[i]:.1f}-{bin_edges[i+1]:.1f}".replace('.', ',')
+                    histogram_major_data.append({
+                        "мітка (більша вісь)": label,
+                        "кількість (більша вісь)": int(counts[i])
+                    })
+                
+                histogram_major_df = pd.DataFrame(histogram_major_data)
+                
+                # Add major axis table to combined sheet (with one blank column between tables)
+                major_start_col = 4  # Start from column D (after minor axis table columns 1-2, blank column 3)
+                major_start_row = 1
+                for c_idx, col_name in enumerate(histogram_major_df.columns, start=1):
+                    cell = histogram_data_sheet.cell(row=major_start_row, column=major_start_col + c_idx - 1, value=col_name)
+                    cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                    cell.font = Font(bold=True)
+                for r_idx, row in enumerate(histogram_major_df.values, start=2):
+                    for c_idx, value in enumerate(row, start=1):
+                        cell = histogram_data_sheet.cell(row=r_idx, column=major_start_col + c_idx - 1, value=value)
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                
+                # Create major axis chart
+                major_chart = BarChart()
+                major_chart.type = "col"
+                major_chart.style = 10
+                major_chart.title = "Розподіл частот більшого діаметру"
+                major_chart.y_axis.title = "Частота, шт"
+                major_chart.x_axis.delete = False
+                
+                # Reference to data in combined sheet (columns 4-5 for major axis, with blank column 3 between)
+                data = Reference(histogram_data_sheet, min_col=5, min_row=1, max_row=len(histogram_major_df) + 1)
+                major_chart.add_data(data, titles_from_data=True)
+                cats = Reference(histogram_data_sheet, min_col=4, min_row=2, max_row=len(histogram_major_df) + 1)
+                major_chart.set_categories(cats)
+                
+                s1 = major_chart.series[0]
+                s1.graphicalProperties.solidFill = "4472C4"
+                s1.graphicalProperties.line.solidFill = "4472C4"
+                major_chart.legend = None
+                
+                major_chart.dataLabels = DataLabelList()
+                major_chart.dataLabels.showVal = True
+                major_chart.dataLabels.showCatName = False
+                major_chart.dataLabels.showSerName = False
+                major_chart.dataLabels.showLegendKey = False
+                major_chart.dataLabels.showLeaderLines = False
+                major_chart.dataLabels.position = "outEnd"
+                major_chart.width = 15
+                major_chart.height = 10
 
         # Create a DataFrame for the calculated indicators
         indicators_table = pd.DataFrame(
@@ -530,6 +678,13 @@ def prepare_excel(peanut_processing_result: PeanutProcessingResult) -> Path:
                     "середньо кв.відх. (по 'більша ось / меньша ось')",
                     "коефіціент варіації (по 'більша ось / меньша ось'), %",
                     "Шт в 1 унції",
+                    "Вибірка",
+                    "Мін (по 'більша вісь')",
+                    "Макс (по 'більша вісь')",
+                    "Розмах (по 'більша вісь')",
+                    "Мін (по 'меньша вісь')",
+                    "Макс (по 'меньша вісь')",
+                    "Розмах (по 'меньша вісь')",
                 ],
                 "Значення": [
                     peanut_processing_result.weight_g,
@@ -538,18 +693,46 @@ def prepare_excel(peanut_processing_result: PeanutProcessingResult) -> Path:
                     peanut_processing_result.standard_deviation_ratio_axes,
                     peanut_processing_result.coefficient_variation_ratio_axes,
                     round(len(peanut_processing_result.peanuts) * 28.35 / 100, 2),
+                    peanut_processing_result.sample_size,
+                    peanut_processing_result.min_major_axis,
+                    peanut_processing_result.max_major_axis,
+                    peanut_processing_result.range_major_axis,
+                    peanut_processing_result.min_minor_axis,
+                    peanut_processing_result.max_minor_axis,
+                    peanut_processing_result.range_minor_axis,
                 ],
             }
         )
 
+        # Write the result table to the first sheet (starting from row 1)
+        result_table.to_excel(writer, sheet_name="Peanut Analysis", index=False, startrow=0)
+
         indicators_table_start_col = result_table.shape[1] + 1
-        # Write the indicators table to the second sheet starting from column E (5th column)
+        # Write the indicators table to the first sheet starting from column E (5th column), from row 1
         indicators_table.to_excel(
             writer,
             sheet_name="Peanut Analysis",
             index=False,
             startcol=indicators_table_start_col,
+            startrow=0,
         )
+        
+        # Now add charts to the first sheet (starting at I15, side by side)
+        first_sheet = writer.sheets["Peanut Analysis"]
+        
+        chart_start_row = 15
+        chart_start_col = "I"  # Column I
+        chart_width_cols = 5  # Approximate columns chart width 15 takes (chart.width = 15 ≈ 9-10 columns)
+        
+        if minor_chart is not None:
+            first_sheet.add_chart(minor_chart, f"{chart_start_col}{chart_start_row}")
+        
+        if major_chart is not None:
+            # Calculate second chart column: shift by the number of columns first chart takes
+            first_chart_col_num = column_index_from_string(chart_start_col)
+            second_chart_col_num = first_chart_col_num + chart_width_cols
+            second_chart_col = get_column_letter(second_chart_col_num)
+            first_sheet.add_chart(major_chart, f"{second_chart_col}{chart_start_row}")
 
         # Access the workbook and worksheet
         worksheet = writer.sheets["Peanut Analysis"]
@@ -579,35 +762,12 @@ def prepare_excel(peanut_processing_result: PeanutProcessingResult) -> Path:
         openpyxl_image.width = openpyxl_image.width // 2
         openpyxl_image.height = openpyxl_image.height // 2
         result_image_sheet.add_image(openpyxl_image, "A1")
-
-    # Add comparison sheet if separated segmentation is available
-    if any(peanut.mask_separated is not None for peanut in peanut_processing_result.peanuts):
-        # Convert PIL Image (RGB) to numpy array and then to BGR for OpenCV
-        original_array = np.array(peanut_processing_result.original_image)
-        if len(original_array.shape) == 3 and original_array.shape[2] == 3:
-            # PIL Image is RGB, convert to BGR for OpenCV
-            original_array = cv2.cvtColor(original_array, cv2.COLOR_RGB2BGR)
-        comparison_image = create_comparison_image(
-            original_array,
-            peanut_processing_result.peanuts
-        )
         
-        # Save comparison image to temp folder
-        comparison_filename = f"comparison_{Path(peanut_processing_result.original_image_filename).stem}.jpg"
-        artifact_service.save_artifact(
-            service=SERVICE_NAME,
-            file_name=comparison_filename,
-            data=comparison_image
-        )
-        
-        comparison_sheet = writer.book.create_sheet(title="Comparison")
-        image_stream = BytesIO()
-        comparison_image.save(image_stream, format="PNG")
-        image_stream.seek(0)
-        openpyxl_image = OpenPyxlImage(image_stream)
-        openpyxl_image.width = openpyxl_image.width // 2
-        openpyxl_image.height = openpyxl_image.height // 2
-        comparison_sheet.add_image(openpyxl_image, "A1")
+        # Move "Данні для гистограми" sheet to the last position
+        if histogram_data_sheet is not None:
+            # Remove from current position and append to end (moves to last position)
+            writer.book.remove(histogram_data_sheet)
+            writer.book._add_sheet(histogram_data_sheet)
 
     return excel_file
 
@@ -617,14 +777,14 @@ def create_comparison_image(
     peanuts: List[OnePeanutProcessingResult],
 ) -> PILImage.Image:
     """
-    Create comparison image with transparent masks for both segmentation approaches.
+    Create visualization image with UNet segmentation masks.
     
     Args:
         preprocessed_image: Original preprocessed image (BGR format from OpenCV)
         peanuts: List of peanut processing results
         
     Returns:
-        PIL Image with both masks overlaid (red for full image, green for separated)
+        PIL Image with UNet segmentation contours and ellipses overlaid
     """
     # Start with original image (BGR format)
     result_image = preprocessed_image.copy()
@@ -635,11 +795,18 @@ def create_comparison_image(
     elif result_image.shape[2] == 4:
         result_image = cv2.cvtColor(result_image, cv2.COLOR_BGRA2BGR)
     
-    h, w = result_image.shape[:2]
-    
     # Draw shapes and indexes for each peanut
     for peanut in peanuts:
-        # Draw OLD ellipse (from original mask) in red
+        # Draw transparent light blue mask overlay
+        if peanut.mask is not None:
+            # Create light blue overlay (BGR format: light blue = (230, 216, 173))
+            # RGB light blue (173, 216, 230) converted to BGR = (230, 216, 173)
+            light_blue_overlay = result_image.copy()
+            light_blue_overlay[peanut.mask] = (230, 216, 173)  # Set mask pixels to light blue
+            # Blend with original image (0.4 = 40% light blue, 60% original)
+            result_image = cv2.addWeighted(result_image, 0.6, light_blue_overlay, 0.4, 0)
+
+        # Draw ellipse (green)
         if peanut.ellipse is not None:
             center = (int(peanut.ellipse.center[0]), int(peanut.ellipse.center[1]))
             axes = (
@@ -654,47 +821,34 @@ def create_comparison_image(
                 angle,
                 0,
                 360,
-                (0, 0, 255),  # red ellipse for old mask
+                (0, 255, 0),  # green ellipse
                 2,
             )
 
-        # Draw separated segmentation contour (green) – NEW mask
-        if peanut.contour_separated is not None:
-            cv2.drawContours(
-                result_image,
-                [peanut.contour_separated],
-                -1,
-                (0, 255, 0),  # green contour for new mask
-                2,
-            )
-
-            # Draw rotated bounding box (yellow) from separated contour
-            rect = cv2.minAreaRect(peanut.contour_separated)
-            box = cv2.boxPoints(rect).astype(int)
-            cv2.drawContours(
-                result_image,
-                [box],
-                0,
-                (0, 255, 255),  # yellow rotated bbox on new mask
-                2,
-            )
-
-        # Draw peanut index near its original (YOLO) contour as anchor
-        if peanut.contour is not None:
+        # Draw peanut index at ellipse center (or contour center if no ellipse)
+        if peanut.ellipse is not None:
+            cx = int(peanut.ellipse.center[0])
+            cy = int(peanut.ellipse.center[1])
+        elif peanut.contour is not None:
             moments = cv2.moments(peanut.contour)
             if moments["m00"] != 0:
                 cx = int(moments["m10"] / moments["m00"])
                 cy = int(moments["m01"] / moments["m00"])
-                cv2.putText(
-                    result_image,
-                    str(peanut.index),
-                    (cx, cy),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    (255, 255, 255),
-                    2,
-                    cv2.LINE_AA,
-                )
+            else:
+                continue
+        else:
+            continue
+        
+        cv2.putText(
+            result_image,
+            str(peanut.index),
+            (cx, cy),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (255, 255, 255),
+            2,
+            cv2.LINE_AA,
+        )
     
     # Convert BGR to RGB for PIL
     result_image = cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB)
