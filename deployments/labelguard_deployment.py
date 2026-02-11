@@ -285,8 +285,12 @@ class LabelGuard:
                 image_full_path = ROOT_DIR / image_path.lstrip('/')
                 if image_full_path.exists():
                     from shutil import copyfile
-                    copyfile(str(image_full_path), str(image_file))
-                    app_logger.info(self.SERVICE_NAME, f"Saved image to {image_file}")
+                    # Check if source and destination are the same file
+                    if str(image_full_path.resolve()) != str(image_file.resolve()):
+                        copyfile(str(image_full_path), str(image_file))
+                        app_logger.info(self.SERVICE_NAME, f"Saved image to {image_file}")
+                    else:
+                        app_logger.debug(self.SERVICE_NAME, f"Image already at destination: {image_file}")
                 else:
                     app_logger.error(self.SERVICE_NAME, f"Image not found at path: {image_full_path}")
             

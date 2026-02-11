@@ -4,8 +4,11 @@ from abc import ABC, abstractmethod
 import os
 import io
 import json
+import base64
 from pathlib import Path
-from google.cloud import vision
+from google.oauth2 import service_account
+from google.auth.transport.requests import Request
+import requests
 from PIL import Image
 import numpy as np
 import regex
@@ -36,24 +39,38 @@ class OCRResult:
     words: List[OCRWord]
     
     @classmethod
-    def from_api_response(cls, response):
-        """Convert Google Vision API response to our format"""
-        if not response.text_annotations:
+    def from_api_response(cls, response_json):
+        """Convert Google Vision API REST response to our format"""
+        # REST API response structure: {"responses": [{"textAnnotations": [...], ...}]}
+        if not response_json or "responses" not in response_json:
             return cls(text="", confidence=0.0, language="unknown", words=[])
-            
-        text = response.text_annotations[0].description
-        language = response.text_annotations[0].locale or "unknown"
-        confidence = getattr(response.text_annotations[0], 'score', 0.0)
+        
+        response = response_json["responses"][0]
+        
+        if "textAnnotations" not in response or not response["textAnnotations"]:
+            return cls(text="", confidence=0.0, language="unknown", words=[])
+        
+        # First annotation is the full text
+        full_text_annotation = response["textAnnotations"][0]
+        text = full_text_annotation.get("description", "")
+        language = full_text_annotation.get("locale", "unknown")
+        confidence = 1.0  # REST API doesn't provide confidence in textAnnotations
         
         words = []
-        for annotation in response.text_annotations[1:]:
-            vertices = annotation.bounding_poly.vertices
-            x_coords = [v.x for v in vertices]
-            y_coords = [v.y for v in vertices]
+        # Remaining annotations are individual words
+        for annotation in response["textAnnotations"][1:]:
+            bounding_poly = annotation.get("boundingPoly", {})
+            vertices = bounding_poly.get("vertices", [])
+            
+            if not vertices:
+                continue
+                
+            x_coords = [v.get("x", 0) for v in vertices]
+            y_coords = [v.get("y", 0) for v in vertices]
             bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
             
             words.append(OCRWord(
-                text=annotation.description,
+                text=annotation.get("description", ""),
                 bbox=[bbox],
                 bold=False  # Will be determined later
             ))
@@ -116,9 +133,28 @@ class BaseOCRProcessor(ABC):
 
 class VisionOCRProcessor(BaseOCRProcessor):
     def __init__(self):
-        """Initialize Vision API client using environment variables"""
+        """Initialize Vision API REST client using environment variables"""
         self.input_filename_stem = None
-       
+        self._credentials = None
+    
+    def _get_access_token(self):
+        """Get access token for Google Vision API using service account credentials"""
+        credentials_path = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+        if not credentials_path:
+            raise ValueError("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")
+        
+        # Load credentials if not already loaded
+        if not self._credentials:
+            self._credentials = service_account.Credentials.from_service_account_file(
+                credentials_path,
+                scopes=['https://www.googleapis.com/auth/cloud-vision']
+            )
+        
+        # Refresh token if expired or not available
+        if not self._credentials.valid:
+            self._credentials.refresh(Request())
+        
+        return self._credentials.token
     
     def _save_vision_result(self, vision_result: OCRResult, json_vision_filename: str):
         """Save VisionResult as JSON file"""
@@ -224,28 +260,61 @@ class VisionOCRProcessor(BaseOCRProcessor):
                 data = json.load(f)
             vision_result = OCRResult.from_dict(data)
         else:
-            app_logger.debug("ocr_processor", "Calling Google Vision API")
-            self.client = vision.ImageAnnotatorClient()
+            app_logger.debug("ocr_processor", "Calling Google Vision API via REST")
             
-            # Create Vision API image object
-            vision_api_image = vision.Image(content=self._image_to_bytes(input_image))
-            
-            # Create image context with language hints if provided
-            image_context = None
-            if language_hints:
-                image_context = vision.ImageContext(language_hints=language_hints)
-                app_logger.debug("ocr_processor", f"Using language hints: {language_hints}")
-            
-            # Perform text detection with language hints
-            response = self.client.text_detection(image=vision_api_image, image_context=image_context)
-            
-            # Handle API errors
-            if response.error.message:
-                app_logger.error("ocr_processor", f"Vision API error: {response.error.message}")
+            # Get access token
+            try:
+                access_token = self._get_access_token()
+            except Exception as e:
+                app_logger.error("ocr_processor", f"Failed to get access token: {str(e)}")
                 return self._create_error_result()
             
-            # Convert to our OCRResult format
-            vision_result = OCRResult.from_api_response(response)
+            # Encode image to base64
+            img_bytes = self._image_to_bytes(input_image)
+            img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+            
+            # Prepare request payload
+            request_data = {
+                "requests": [{
+                    "image": {"content": img_base64},
+                    "features": [{"type": "TEXT_DETECTION"}]
+                }]
+            }
+            
+            # Add language hints if provided
+            if language_hints:
+                request_data["requests"][0]["imageContext"] = {
+                    "languageHints": language_hints
+                }
+                app_logger.debug("ocr_processor", f"Using language hints: {language_hints}")
+            
+            # Make REST API call
+            url = 'https://vision.googleapis.com/v1/images:annotate'
+            headers = {
+                'Authorization': f'Bearer {access_token}',
+                'Content-Type': 'application/json'
+            }
+            
+            try:
+                response = requests.post(url, json=request_data, headers=headers)
+                response.raise_for_status()  # Raise exception for bad status codes
+                response_json = response.json()
+                
+                # Handle API errors in response
+                if "error" in response_json:
+                    error_msg = response_json["error"].get("message", "Unknown error")
+                    app_logger.error("ocr_processor", f"Vision API error: {error_msg}")
+                    return self._create_error_result()
+                
+                # Convert to our OCRResult format
+                vision_result = OCRResult.from_api_response(response_json)
+                
+            except requests.exceptions.RequestException as e:
+                app_logger.error("ocr_processor", f"Vision API request failed: {str(e)}")
+                return self._create_error_result()
+            except Exception as e:
+                app_logger.error("ocr_processor", f"Unexpected error calling Vision API: {str(e)}")
+                return self._create_error_result()
             
             # Save for future use
             if json_vision_filename:

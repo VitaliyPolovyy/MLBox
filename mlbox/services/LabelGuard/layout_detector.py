@@ -25,8 +25,11 @@ class LayoutTextBlock:
 
 class LayoutDetector:
     def __init__(self, model_name="PP-DocLayout_plus-L"):
-        """Initialize layout detection model using PaddleOCR only"""
-        self.layout_model = LayoutDetection(model_name=model_name)
+        model_dir = Path("/home/appuser/.paddlex/official_models") / model_name
+        self.layout_model = LayoutDetection(
+            model_name=model_name,
+            model_dir=str(model_dir)
+        )
         
     
     def extract_blocks(self, image_input: Image.Image, 

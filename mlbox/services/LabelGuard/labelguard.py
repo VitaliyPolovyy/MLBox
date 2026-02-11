@@ -1906,11 +1906,23 @@ def _get_etalon_text_blocks(kmat: str, version: str, etalon_path_str) -> List[di
     if not etalon_path.exists():
         app_logger.error(SERVICE_NAME, f"Etalon file not found: {etalon_path}")
         return []
-    with open(etalon_path, 'r', encoding='utf-8') as f:
+    with open(etalon_path, 'r', encoding='utf-8-sig') as f:
         content = f.read()
     
-    # Remove control characters that cause JSON parsing issues
-    content = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', content)
+    # Remove only truly problematic control characters
+    # Preserve \n (\x0a), \r (\x0d), and \t (\x09) which are valid in JSON strings
+    # Remove: NULL (\x00), and other problematic control chars
+    content = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', content)
+    
+    # Strip trailing invalid characters (like '-' that might appear after ']')
+    # Ensure JSON ends properly with ']' or '}' if it's an array/object
+    content = content.rstrip().rstrip('-').rstrip()
+    # If content doesn't end with ] or }, try to fix it
+    if content and not content.rstrip().endswith((']', '}')):
+        # Try to find the last valid closing bracket
+        last_bracket = max(content.rfind(']'), content.rfind('}'))
+        if last_bracket > 0:
+            content = content[:last_bracket + 1]
     
     etalon_bank = json.loads(content)
 

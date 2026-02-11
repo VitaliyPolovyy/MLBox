@@ -11,7 +11,8 @@ FROM python:3.11-slim
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl libgl1 libgl1-mesa-dri libglib2.0-0 libxext6 libxrender1 libgomp1 \
- && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/* \
+ && echo "precedence ::ffff:0:0/96  100" >> /etc/gai.conf
 
 WORKDIR /app
 

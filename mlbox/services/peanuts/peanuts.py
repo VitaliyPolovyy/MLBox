@@ -1,6 +1,5 @@
 import os
 import base64
-from io import BytesIO
 from pathlib import Path
 import traceback
 from typing import List, Optional, Tuple
@@ -11,17 +10,12 @@ import pandas as pd
 from dotenv import load_dotenv
 from huggingface_hub import hf_hub_download
 from loguru import logger
-from openpyxl.drawing.image import Image as OpenPyxlImage
-from openpyxl.chart import BarChart, Reference
-from openpyxl.chart.label import DataLabelList
-from openpyxl.chart.marker import DataPoint
-from openpyxl.styles import Alignment, Font
-from openpyxl.utils import get_column_letter, column_index_from_string
 from PIL import Image as PILImage
 from mlbox.models.peanuts.cls.yolo_cls_model import YOLOPeanutsClassifier
 from mlbox.models.peanuts.detection.yolo_detector_model import YOLOPeanutsDetector
 from mlbox.models.peanuts.detection.unet_detector_model import UNetPeanutsDetector
 from mlbox.services.peanuts.datatype import Ellipse, Status, PeanutProcessingRequest, PeanutProcessingResult, OnePeanutProcessingResult, BaseResponseJson, PeanutDataResponseJson
+from mlbox.services.peanuts.excel_report import prepare_excel
 from mlbox.settings import ROOT_DIR, LOG_LEVEL
 from mlbox.utils.cvtools import preprocess_images_with_white_rectangle
 from mlbox.utils.logger import get_logger, get_artifact_service
@@ -37,7 +31,14 @@ env_file = Path.home() / "credentials" / ".env.mlbox"
 if env_file.exists():
     load_dotenv(env_file, override=False)  # Then load global credentials (override=False to keep local values)
 
-#os.environ["CURL_CA_BUNDLE"] = ""
+# Configure SSL to use system certificate bundle (includes corporate certificates in production)
+# This allows the application to work behind corporate proxies that use custom certificates
+cert_bundle_path = "/etc/ssl/certs/ca-certificates.crt"
+if os.path.exists(cert_bundle_path):
+    os.environ.setdefault("REQUESTS_CA_BUNDLE", cert_bundle_path)
+    os.environ.setdefault("SSL_CERT_FILE", cert_bundle_path)
+    os.environ.setdefault("CURL_CA_BUNDLE", cert_bundle_path)
+
 HF_TOKEN = os.getenv("HF_TOKEN")
 HF_PEANUT_SEG_REPO_ID = os.getenv("HF_PEANUT_SEG_REPO_ID")
 HF_PEANUT_SEG_FILE = os.getenv("HF_PEANUT_SEG_FILE")
@@ -82,7 +83,10 @@ def process_requests(
     for request, peanut_processing_result in zip(requests, peanut_processing_results):
 
         # Step 2: Format result based on client needs
-        excel_file = prepare_excel(peanut_processing_result)
+        excel_file = prepare_excel(
+            peanut_processing_result,
+            artifact_service.get_service_dir(SERVICE_NAME),
+        )
         peanut_processing_result.status = Status.SUCCESS
         peanut_processing_result.error_message = "Successfully processed the request."
         peanut_processing_result.excel_filename = excel_file
@@ -174,6 +178,12 @@ def process_peanuts_separated_segmentation(
 def process_peanuts_images(
     requests: List[PeanutProcessingRequest],
 ) -> List[PeanutProcessingResult]:
+    # Ensure SSL certificate configuration is set (important for Ray workers in separate processes)
+    cert_bundle_path = "/etc/ssl/certs/ca-certificates.crt"
+    if os.path.exists(cert_bundle_path):
+        os.environ["REQUESTS_CA_BUNDLE"] = cert_bundle_path
+        os.environ["SSL_CERT_FILE"] = cert_bundle_path
+        os.environ["CURL_CA_BUNDLE"] = cert_bundle_path
 
     app_logger.info(SERVICE_NAME, f"Processing peanuts images: {len(requests)}")
     peanut_processing_results: List[PeanutProcessingResult] = []
@@ -413,7 +423,7 @@ def process_peanuts_images(
         peanut_processing_results.append(
             PeanutProcessingResult(
                 peanuts=peanuts,
-                weight_g=100,
+                weight_g=50,
                 pixels_per_mm=pixels_per_mm,
                 original_image=PILImage.fromarray(preprocessed_image),
                 original_image_filename=input_image_filename,
@@ -459,317 +469,6 @@ def process_peanuts_images(
         )
 
     return peanut_processing_results
-
-def prepare_excel(peanut_processing_result: PeanutProcessingResult) -> Path:
-    """
-    Create an Excel file for the given PeanutProcessingResult.
-
-    Args:
-        peanut_processing_result (PeanutProcessingResult): The result to prepare the Excel file for.
-
-    Returns:
-        Path: The path to the generated Excel file.
-    """
-    
-    # Define output file path
-    excel_file = (
-        artifact_service.get_service_dir(SERVICE_NAME)
-        / f"{Path(peanut_processing_result.original_image_filename).stem}.xlsx"
-    )
-
-    if excel_file.exists():
-        excel_file.unlink()
-
-    # Create Excel writer
-    with pd.ExcelWriter(excel_file, engine="openpyxl") as writer:
-        # Prepare result table
-        result_table = pd.DataFrame(
-            [
-                {
-                    "№ п/п": idx,
-                    "max діаметр, мм": (
-                        round(
-                            peanut.ellipse.axes[1]
-                            / peanut_processing_result.pixels_per_mm,
-                            1,
-                        )
-                        if peanut.ellipse
-                        else None
-                    ),
-                    "min діаметр, мм": (
-                        round(
-                            peanut.ellipse.axes[0]
-                            / peanut_processing_result.pixels_per_mm,
-                            1,
-                        )
-                        if peanut.ellipse
-                        else None
-                    ),
-                    "площа маски, мм²": (
-                        round(
-                            np.sum(peanut.mask) / (peanut_processing_result.pixels_per_mm ** 2),
-                            2,
-                        )
-                        if peanut.mask is not None
-                        else None
-                    ),
-                    "клас": YOLOPeanutsClassifier.class_names[peanut.real_class[0]],
-                    "впевненність (клас)": round(peanut.real_class[1], 2),
-                    "впевненність (маска)": round(peanut.det_confidence, 2),
-                }
-                for idx, peanut in enumerate(peanut_processing_result.peanuts)
-            ]
-        )
-
-        # Initialize histogram variables
-        histogram_data_sheet = None
-        histogram_minor_df = None
-        histogram_major_df = None
-        minor_chart = None
-        major_chart = None
-        chart_space_rows = 15  # Default: no charts, tables start at row 0
-        
-        # Create histogram tables and charts FIRST (before writing main tables)
-        # Only add if we have peanuts with ellipses
-        if peanut_processing_result.peanuts and any(peanut.ellipse for peanut in peanut_processing_result.peanuts):
-            # Get axes values in mm
-            minor_axes_mm = [
-                peanut.ellipse.axes[0] / peanut_processing_result.pixels_per_mm
-                for peanut in peanut_processing_result.peanuts
-                if peanut.ellipse
-            ]
-            major_axes_mm = [
-                peanut.ellipse.axes[1] / peanut_processing_result.pixels_per_mm
-                for peanut in peanut_processing_result.peanuts
-                if peanut.ellipse
-            ]
-            
-            # Create combined histogram data sheet
-            histogram_data_sheet = writer.book.create_sheet(title="Данні для гистограми")
-            
-            # Create histogram for minor axis (width)
-            if minor_axes_mm:
-                min_val = min(minor_axes_mm) - 0.5
-                max_val = max(minor_axes_mm) + 0.5
-                bins = np.arange(min_val, max_val + 0.5, 0.5)
-                counts, bin_edges = np.histogram(minor_axes_mm, bins=bins)
-                
-                histogram_minor_data = []
-                for i in range(len(counts)):
-                    if i == 0:
-                        label = f"≤{bin_edges[i+1]:.1f}".replace('.', ',')
-                    else:
-                        label = f"{bin_edges[i]:.1f}-{bin_edges[i+1]:.1f}".replace('.', ',')
-                    histogram_minor_data.append({
-                        "мітка (меньша вісь)": label,
-                        "кількість (меньша вісь)": int(counts[i])
-                    })
-                
-                histogram_minor_df = pd.DataFrame(histogram_minor_data)
-                
-                # Add minor axis table header and data to combined sheet
-                minor_start_row = 1
-                for c_idx, col_name in enumerate(histogram_minor_df.columns, start=1):
-                    cell = histogram_data_sheet.cell(row=minor_start_row, column=c_idx, value=col_name)
-                    cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-                    cell.font = Font(bold=True)
-                for r_idx, row in enumerate(histogram_minor_df.values, start=2):
-                    for c_idx, value in enumerate(row, start=1):
-                        cell = histogram_data_sheet.cell(row=r_idx, column=c_idx, value=value)
-                        cell.alignment = Alignment(horizontal="center", vertical="center")
-                
-                # Create minor axis chart
-                minor_chart = BarChart()
-                minor_chart.type = "col"
-                minor_chart.style = 10
-                minor_chart.title = "Розподіл частот меньшої осі"
-                minor_chart.y_axis.title = "Частота, шт"
-                minor_chart.x_axis.delete = False
-                
-                # Reference to data in combined sheet
-                data = Reference(histogram_data_sheet, min_col=2, min_row=1, max_row=len(histogram_minor_df) + 1)
-                minor_chart.add_data(data, titles_from_data=True)
-                cats = Reference(histogram_data_sheet, min_col=1, min_row=2, max_row=len(histogram_minor_df) + 1)
-                minor_chart.set_categories(cats)
-                
-                s1 = minor_chart.series[0]
-                s1.graphicalProperties.solidFill = "4472C4"
-                s1.graphicalProperties.line.solidFill = "4472C4"
-                minor_chart.legend = None
-                
-                minor_chart.dataLabels = DataLabelList()
-                minor_chart.dataLabels.showVal = True
-                minor_chart.dataLabels.showCatName = False
-                minor_chart.dataLabels.showSerName = False
-                minor_chart.dataLabels.showLegendKey = False
-                minor_chart.dataLabels.showLeaderLines = False
-                minor_chart.dataLabels.position = "outEnd"
-                minor_chart.width = 15
-                minor_chart.height = 10
-            
-            # Create histogram for major axis (length)
-            if major_axes_mm:
-                min_val = min(major_axes_mm) - 0.5
-                max_val = max(major_axes_mm) + 0.5
-                bins = np.arange(min_val, max_val + 0.5, 0.5)
-                counts, bin_edges = np.histogram(major_axes_mm, bins=bins)
-                
-                histogram_major_data = []
-                for i in range(len(counts)):
-                    if i == 0:
-                        label = f"≤{bin_edges[i+1]:.1f}".replace('.', ',')
-                    else:
-                        label = f"{bin_edges[i]:.1f}-{bin_edges[i+1]:.1f}".replace('.', ',')
-                    histogram_major_data.append({
-                        "мітка (більша вісь)": label,
-                        "кількість (більша вісь)": int(counts[i])
-                    })
-                
-                histogram_major_df = pd.DataFrame(histogram_major_data)
-                
-                # Add major axis table to combined sheet (with one blank column between tables)
-                major_start_col = 4  # Start from column D (after minor axis table columns 1-2, blank column 3)
-                major_start_row = 1
-                for c_idx, col_name in enumerate(histogram_major_df.columns, start=1):
-                    cell = histogram_data_sheet.cell(row=major_start_row, column=major_start_col + c_idx - 1, value=col_name)
-                    cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-                    cell.font = Font(bold=True)
-                for r_idx, row in enumerate(histogram_major_df.values, start=2):
-                    for c_idx, value in enumerate(row, start=1):
-                        cell = histogram_data_sheet.cell(row=r_idx, column=major_start_col + c_idx - 1, value=value)
-                        cell.alignment = Alignment(horizontal="center", vertical="center")
-                
-                # Create major axis chart
-                major_chart = BarChart()
-                major_chart.type = "col"
-                major_chart.style = 10
-                major_chart.title = "Розподіл частот більшого діаметру"
-                major_chart.y_axis.title = "Частота, шт"
-                major_chart.x_axis.delete = False
-                
-                # Reference to data in combined sheet (columns 4-5 for major axis, with blank column 3 between)
-                data = Reference(histogram_data_sheet, min_col=5, min_row=1, max_row=len(histogram_major_df) + 1)
-                major_chart.add_data(data, titles_from_data=True)
-                cats = Reference(histogram_data_sheet, min_col=4, min_row=2, max_row=len(histogram_major_df) + 1)
-                major_chart.set_categories(cats)
-                
-                s1 = major_chart.series[0]
-                s1.graphicalProperties.solidFill = "4472C4"
-                s1.graphicalProperties.line.solidFill = "4472C4"
-                major_chart.legend = None
-                
-                major_chart.dataLabels = DataLabelList()
-                major_chart.dataLabels.showVal = True
-                major_chart.dataLabels.showCatName = False
-                major_chart.dataLabels.showSerName = False
-                major_chart.dataLabels.showLegendKey = False
-                major_chart.dataLabels.showLeaderLines = False
-                major_chart.dataLabels.position = "outEnd"
-                major_chart.width = 15
-                major_chart.height = 10
-
-        # Create a DataFrame for the calculated indicators
-        indicators_table = pd.DataFrame(
-            {
-                "Показник": [
-                    "Вага зразку, г",
-                    "середньо кв.відх. (по 'меньша осі')",
-                    "коефіціент варіації (по 'меньша осі'), %",
-                    "середньо кв.відх. (по 'більша ось / меньша ось')",
-                    "коефіціент варіації (по 'більша ось / меньша ось'), %",
-                    "Шт в 1 унції",
-                    "Вибірка",
-                    "Мін (по 'більша вісь')",
-                    "Макс (по 'більша вісь')",
-                    "Розмах (по 'більша вісь')",
-                    "Мін (по 'меньша вісь')",
-                    "Макс (по 'меньша вісь')",
-                    "Розмах (по 'меньша вісь')",
-                ],
-                "Значення": [
-                    peanut_processing_result.weight_g,
-                    peanut_processing_result.standard_deviation_minor_axe,
-                    peanut_processing_result.coefficient_variation_minor_axe,
-                    peanut_processing_result.standard_deviation_ratio_axes,
-                    peanut_processing_result.coefficient_variation_ratio_axes,
-                    round(len(peanut_processing_result.peanuts) * 28.35 / 100, 2),
-                    peanut_processing_result.sample_size,
-                    peanut_processing_result.min_major_axis,
-                    peanut_processing_result.max_major_axis,
-                    peanut_processing_result.range_major_axis,
-                    peanut_processing_result.min_minor_axis,
-                    peanut_processing_result.max_minor_axis,
-                    peanut_processing_result.range_minor_axis,
-                ],
-            }
-        )
-
-        # Write the result table to the first sheet (starting from row 1)
-        result_table.to_excel(writer, sheet_name="Peanut Analysis", index=False, startrow=0)
-
-        indicators_table_start_col = result_table.shape[1] + 1
-        # Write the indicators table to the first sheet starting from column E (5th column), from row 1
-        indicators_table.to_excel(
-            writer,
-            sheet_name="Peanut Analysis",
-            index=False,
-            startcol=indicators_table_start_col,
-            startrow=0,
-        )
-        
-        # Now add charts to the first sheet (starting at I15, side by side)
-        first_sheet = writer.sheets["Peanut Analysis"]
-        
-        chart_start_row = 15
-        chart_start_col = "I"  # Column I
-        chart_width_cols = 5  # Approximate columns chart width 15 takes (chart.width = 15 ≈ 9-10 columns)
-        
-        if minor_chart is not None:
-            first_sheet.add_chart(minor_chart, f"{chart_start_col}{chart_start_row}")
-        
-        if major_chart is not None:
-            # Calculate second chart column: shift by the number of columns first chart takes
-            first_chart_col_num = column_index_from_string(chart_start_col)
-            second_chart_col_num = first_chart_col_num + chart_width_cols
-            second_chart_col = get_column_letter(second_chart_col_num)
-            first_sheet.add_chart(major_chart, f"{second_chart_col}{chart_start_row}")
-
-        # Access the workbook and worksheet
-        worksheet = writer.sheets["Peanut Analysis"]
-
-        # Set the alignment for all cells to wrap text
-
-        worksheet.column_dimensions[
-            get_column_letter(indicators_table_start_col + 1)
-        ].width = 50
-
-        for row in worksheet.iter_rows():
-            for cell in row:
-
-                if cell.column == indicators_table_start_col + 1:
-                    cell.alignment = Alignment(wrap_text=True)
-                else:
-                    cell.alignment = Alignment(
-                        wrap_text=True, horizontal="center", vertical="center"
-                    )
-
-        # Insert the result image into the second sheet
-        result_image_sheet = writer.book.create_sheet(title="Result Image")
-        image_stream = BytesIO()
-        peanut_processing_result.result_image.save(image_stream, format="PNG")
-        image_stream.seek(0)
-        openpyxl_image = OpenPyxlImage(image_stream)
-        openpyxl_image.width = openpyxl_image.width // 2
-        openpyxl_image.height = openpyxl_image.height // 2
-        result_image_sheet.add_image(openpyxl_image, "A1")
-        
-        # Move "Данні для гистограми" sheet to the last position
-        if histogram_data_sheet is not None:
-            # Remove from current position and append to end (moves to last position)
-            writer.book.remove(histogram_data_sheet)
-            writer.book._add_sheet(histogram_data_sheet)
-
-    return excel_file
 
 
 def create_comparison_image(
